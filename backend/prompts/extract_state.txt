@@ -1,0 +1,36 @@
+请分析以下聊天记录，提取结构化信息。返回严格的 JSON 格式。
+
+## 之前的状态
+{previous_state}
+
+## 新的聊天记录
+{new_messages}
+
+请返回以下 JSON 格式（不要包含 markdown 代码块标记）：
+{{
+  "characters": [
+    {{
+      "name": "角色名称",
+      "description": "角色描述",
+      "status": "当前状态（如：健康/受伤/离开等）"
+    }}
+  ],
+  "events": [
+    {{
+      "description": "事件描述",
+      "timestamp": "事件发生的叙事时间"
+    }}
+  ],
+  "world_state": {{
+    "location": "当前场景位置",
+    "time": "叙事中的时间",
+    "atmosphere": "氛围描述",
+    "key_items": ["重要物品或线索"]
+  }}
+}}
+
+注意：
+- 合并之前的状态和新信息，不要丢失之前已有的角色和事件
+- 如果角色状态发生变化，更新对应角色的 status
+- 新事件追加到 events 列表末尾
+- world_state 反映最新的状态
