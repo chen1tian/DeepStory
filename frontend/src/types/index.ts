@@ -86,10 +86,49 @@ export interface WSMessageOut {
 export interface CreateSessionRequest {
   title?: string;
   system_prompt?: string;
+  story_id?: string;
+  opener_index?: number;
 }
 
 export interface EditorTemplate {
   id: string;
   name: string;
   description: string;
+}
+
+// --- Story ---
+
+export interface StoryOpener {
+  label: string;
+  content: string;
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  description: string;
+  background: string;
+  openers: StoryOpener[];
+  preset_characters: CharacterInfo[];
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateStoryRequest {
+  title?: string;
+  description?: string;
+  background?: string;
+  openers?: StoryOpener[];
+  preset_characters?: CharacterInfo[];
+  color?: string;
+}
+
+export interface UpdateStoryRequest {
+  title?: string;
+  description?: string;
+  background?: string;
+  openers?: StoryOpener[];
+  preset_characters?: CharacterInfo[];
+  color?: string;
 }

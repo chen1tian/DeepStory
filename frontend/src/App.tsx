@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSessionStore } from "./stores/sessionStore";
 import { useUIStore } from "./stores/uiStore";
+import { useChatStore } from "./stores/chatStore";
 import SessionList from "./components/SessionList";
 import ChatView from "./components/ChatView";
 import EditMode from "./components/EditMode";
 import StatePanel from "./components/StatePanel";
+import StoryManager from "./components/StoryManager";
+import StorySelector from "./components/StorySelector";
 import "./styles/global.css";
 
 function Toasts() {
@@ -24,6 +27,8 @@ function Toasts() {
 
 export default function App() {
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
+  const addSession = useSessionStore((s) => s.addSession);
+  const connectToSession = useChatStore((s) => s.connectToSession);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const editMode = useUIStore((s) => s.editMode);
   const statePanelOpen = useUIStore((s) => s.statePanelOpen);
@@ -31,17 +36,48 @@ export default function App() {
   const toggleEditMode = useUIStore((s) => s.toggleEditMode);
   const toggleStatePanel = useUIStore((s) => s.toggleStatePanel);
 
+  const [showStoryManager, setShowStoryManager] = useState(false);
+  const [showStorySelector, setShowStorySelector] = useState(false);
+
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  const handleNewSession = () => setShowStorySelector(true);
+
+  const handleStorySelect = async (storyId: string, openerIndex: number) => {
+    setShowStorySelector(false);
+    const session = await addSession(undefined, storyId, openerIndex);
+    connectToSession(session.id);
+  };
+
+  const handleSkipStory = async () => {
+    setShowStorySelector(false);
+    const session = await addSession();
+    connectToSession(session.id);
+  };
 
   return (
     <div className="app-layout">
       <Toasts />
 
+      {showStoryManager && (
+        <StoryManager onClose={() => setShowStoryManager(false)} />
+      )}
+      {showStorySelector && (
+        <StorySelector
+          onSelect={handleStorySelect}
+          onSkip={handleSkipStory}
+          onCancel={() => setShowStorySelector(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "" : "collapsed"}`}>
-        <SessionList />
+        <SessionList
+          onNewSession={handleNewSession}
+          onManageStories={() => setShowStoryManager(true)}
+        />
       </aside>
 
       {/* Main */}

@@ -8,7 +8,7 @@ interface SessionState {
   loading: boolean;
 
   fetchSessions: () => Promise<void>;
-  addSession: (title?: string) => Promise<Session>;
+  addSession: (title?: string, storyId?: string, openerIndex?: number) => Promise<Session>;
   removeSession: (id: string) => Promise<void>;
   selectSession: (id: string) => void;
 }
@@ -28,8 +28,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  addSession: async (title?: string) => {
-    const session = await createSession({ title: title || "新的对话" });
+  addSession: async (title?: string, storyId?: string, openerIndex?: number) => {
+    const session = await createSession({
+      title: title || "新的对话",
+      story_id: storyId,
+      opener_index: openerIndex,
+    });
     set((s) => ({
       sessions: [session, ...s.sessions],
       currentSessionId: session.id,

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta
+from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta, Message
 from app.storage.file_storage import (
     generate_id,
     write_json,
@@ -12,6 +12,7 @@ from app.storage.file_storage import (
     list_sessions,
     delete_session,
 )
+from app.storage.story_storage import load_story
 from app.services.chat_manager import create_branch_from
 
 router = APIRouter(tags=["sessions"])
@@ -21,16 +22,53 @@ router = APIRouter(tags=["sessions"])
 async def create_session(req: CreateSessionRequest):
     session_id = generate_id()
     now = datetime.now().isoformat()
+
+    system_prompt = req.system_prompt
+    opener_content: str | None = None
+    story_title: str | None = None
+
+    # If story_id provided, load story and override system_prompt with background
+    if req.story_id:
+        story_data = await load_story(req.story_id)
+        if story_data:
+            system_prompt = story_data.get("background", "") or system_prompt
+            story_title = story_data.get("title", "")
+            openers = story_data.get("openers", [])
+            idx = max(0, min(req.opener_index, len(openers) - 1)) if openers else -1
+            if idx >= 0 and openers:
+                opener_content = openers[idx].get("content", "")
+
+    title = req.title
+    if title == "新的对话" and story_title:
+        title = story_title
+
     session = SessionMeta(
         id=session_id,
-        title=req.title,
+        title=title,
         created_at=now,
         updated_at=now,
-        system_prompt=req.system_prompt,
+        system_prompt=system_prompt,
         active_branch=[],
     )
     await write_json(session_id, "session.json", session.model_dump())
-    await write_json(session_id, "messages.json", [])
+
+    # Seed messages: add selected opener as first assistant message
+    messages: list[dict] = []
+    if opener_content:
+        opener_msg = Message(
+            id=generate_id(),
+            parent_id=None,
+            role="assistant",
+            content=opener_content,
+            timestamp=now,
+            token_count=0,
+            branch_id="main",
+        )
+        messages.append(opener_msg.model_dump())
+        session.active_branch = [opener_msg.id]
+        await write_json(session_id, "session.json", session.model_dump())
+
+    await write_json(session_id, "messages.json", messages)
     return SessionResponse(
         id=session.id,
         title=session.title,

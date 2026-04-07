@@ -56,12 +56,53 @@ class StateData(BaseModel):
     version: int = 0
 
 
+# --- Story schemas ---
+
+
+class StoryOpener(BaseModel):
+    """A single opening message for a story."""
+    label: str = ""  # short description like "悬念开场"
+    content: str = ""
+
+
+class Story(BaseModel):
+    id: str
+    title: str = "未命名故事"
+    description: str = ""  # brief summary shown in card
+    background: str = ""  # detailed setting injected as system prompt
+    openers: list[StoryOpener] = Field(default_factory=list)
+    preset_characters: list[CharacterInfo] = Field(default_factory=list)
+    color: str = "#6366f1"  # tag / card accent color
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateStoryRequest(BaseModel):
+    title: str = "未命名故事"
+    description: str = ""
+    background: str = ""
+    openers: list[StoryOpener] = Field(default_factory=list)
+    preset_characters: list[CharacterInfo] = Field(default_factory=list)
+    color: str = "#6366f1"
+
+
+class UpdateStoryRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    background: str | None = None
+    openers: list[StoryOpener] | None = None
+    preset_characters: list[CharacterInfo] | None = None
+    color: str | None = None
+
+
 # --- API request/response schemas ---
 
 
 class CreateSessionRequest(BaseModel):
     title: str = "新的对话"
     system_prompt: str = ""
+    story_id: str | None = None
+    opener_index: int = 0
 
 
 class SessionResponse(BaseModel):

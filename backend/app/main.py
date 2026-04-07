@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
     # Startup
     sessions_dir = settings.data_dir / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
+    stories_dir = settings.data_dir / "stories"
+    stories_dir.mkdir(parents=True, exist_ok=True)
     log.info("app_startup", data_dir=str(settings.data_dir))
     yield
     # Shutdown
@@ -52,11 +54,13 @@ from app.api.sessions import router as sessions_router  # noqa: E402
 from app.api.chat import router as chat_router  # noqa: E402
 from app.api.state import router as state_router  # noqa: E402
 from app.api.editor import router as editor_router  # noqa: E402
+from app.api.stories import router as stories_router  # noqa: E402
 
 app.include_router(sessions_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(state_router, prefix="/api")
 app.include_router(editor_router, prefix="/api")
+app.include_router(stories_router, prefix="/api")
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402

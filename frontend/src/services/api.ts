@@ -4,6 +4,9 @@ import type {
   Message,
   StateData,
   EditorTemplate,
+  Story,
+  CreateStoryRequest,
+  UpdateStoryRequest,
 } from "../types";
 
 const BASE = "/api";
@@ -72,3 +75,23 @@ export const generateUI = (
 
 export const getTemplates = () =>
   request<{ templates: EditorTemplate[] }>("/editor/templates");
+
+// Stories
+export const getStories = () => request<Story[]>("/stories");
+
+export const getStory = (id: string) => request<Story>(`/stories/${id}`);
+
+export const createStory = (data: CreateStoryRequest = {}) =>
+  request<Story>("/stories", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateStory = (id: string, data: UpdateStoryRequest) =>
+  request<Story>(`/stories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteStory = (id: string) =>
+  request<{ status: string }>(`/stories/${id}`, { method: "DELETE" });
