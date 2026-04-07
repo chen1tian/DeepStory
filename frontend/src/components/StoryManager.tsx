@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useStoryStore } from "../stores/storyStore";
+import { useProtagonistStore } from "../stores/protagonistStore";
 import AIAssistModal from "./AIAssistModal";
-import type { Story, StoryOpener, CharacterInfo } from "../types";
+import type { Story, StoryOpener, CharacterInfo, Protagonist } from "../types";
 
 export default function StoryManager({ onClose }: { onClose: () => void }) {
   const { stories, loading, fetchStories, addStory, editStory, removeStory } =
     useStoryStore();
+  const { protagonists, fetchProtagonists } = useProtagonistStore();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStories();
-  }, [fetchStories]);
+    fetchProtagonists();
+  }, [fetchStories, fetchProtagonists]);
 
   const handleAdd = async () => {
     const story = await addStory();
@@ -79,6 +82,7 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
                 key={editingStory.id}
                 story={editingStory}
                 onSave={(data) => editStory(editingStory.id, data)}
+                protagonists={protagonists}
               />
             ) : (
               <div className="empty-state">
@@ -102,14 +106,17 @@ interface FormData {
   openers: StoryOpener[];
   preset_characters: CharacterInfo[];
   color: string;
+  protagonist_id: string;
 }
 
 function StoryForm({
   story,
   onSave,
+  protagonists,
 }: {
   story: Story;
   onSave: (data: Partial<FormData>) => Promise<unknown>;
+  protagonists: Protagonist[];
 }) {
   const [form, setForm] = useState<FormData>({
     title: story.title,
@@ -118,6 +125,7 @@ function StoryForm({
     openers: story.openers.length > 0 ? story.openers : [],
     preset_characters: story.preset_characters,
     color: story.color || "#6366f1",
+    protagonist_id: story.protagonist_id || "",
   });
   const [saving, setSaving] = useState(false);
   const [aiAssist, setAiAssist] = useState<{
@@ -217,6 +225,22 @@ function StoryForm({
           />
           <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{form.color}</span>
         </div>
+      </div>
+
+      <div className="story-form-row">
+        <label>绑定主角</label>
+        <select
+          value={form.protagonist_id}
+          onChange={(e) => update("protagonist_id", e.target.value)}
+          className="protagonist-select"
+        >
+          <option value="">不绑定（使用默认主角）</option>
+          {protagonists.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.avatar_emoji} {p.name}{p.is_default ? " (默认)" : ""}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="story-form-row">

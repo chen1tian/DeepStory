@@ -2,12 +2,17 @@ import { useEffect, useState } from "react";
 import { useSessionStore } from "./stores/sessionStore";
 import { useUIStore } from "./stores/uiStore";
 import { useChatStore } from "./stores/chatStore";
+import { usePresetStore } from "./stores/presetStore";
 import SessionList from "./components/SessionList";
 import ChatView from "./components/ChatView";
 import EditMode from "./components/EditMode";
 import StatePanel from "./components/StatePanel";
 import StoryManager from "./components/StoryManager";
 import StorySelector from "./components/StorySelector";
+import ProtagonistManager from "./components/ProtagonistManager";
+import PresetManager from "./components/PresetManager";
+import PresetSwitcher from "./components/PresetSwitcher";
+import DebugPanel from "./components/DebugPanel";
 import "./styles/global.css";
 
 function Toasts() {
@@ -36,8 +41,13 @@ export default function App() {
   const toggleEditMode = useUIStore((s) => s.toggleEditMode);
   const toggleStatePanel = useUIStore((s) => s.toggleStatePanel);
 
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+
   const [showStoryManager, setShowStoryManager] = useState(false);
   const [showStorySelector, setShowStorySelector] = useState(false);
+  const [showProtagonistManager, setShowProtagonistManager] = useState(false);
+  const [showPresetManager, setShowPresetManager] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -51,9 +61,14 @@ export default function App() {
     connectToSession(session.id);
   };
 
-  const handleSkipStory = async () => {
+  const handleSkipStory = async (presetId?: string) => {
     setShowStorySelector(false);
-    const session = await addSession();
+    let systemPrompt: string | undefined;
+    if (presetId) {
+      const preset = usePresetStore.getState().presets.find((p) => p.id === presetId);
+      systemPrompt = preset?.content;
+    }
+    const session = await addSession(undefined, undefined, undefined, undefined, systemPrompt);
     connectToSession(session.id);
   };
 
@@ -63,6 +78,18 @@ export default function App() {
 
       {showStoryManager && (
         <StoryManager onClose={() => setShowStoryManager(false)} />
+      )}
+      {showProtagonistManager && (
+        <ProtagonistManager onClose={() => setShowProtagonistManager(false)} />
+      )}
+      {showPresetManager && (
+        <PresetManager onClose={() => setShowPresetManager(false)} />
+      )}
+      {showDebugPanel && currentSessionId && (
+        <DebugPanel
+          sessionId={currentSessionId}
+          onClose={() => setShowDebugPanel(false)}
+        />
       )}
       {showStorySelector && (
         <StorySelector
@@ -77,6 +104,8 @@ export default function App() {
         <SessionList
           onNewSession={handleNewSession}
           onManageStories={() => setShowStoryManager(true)}
+          onManageProtagonists={() => setShowProtagonistManager(true)}
+          onManagePresets={() => setShowPresetManager(true)}
         />
       </aside>
 
@@ -93,11 +122,19 @@ export default function App() {
             🎨 编辑
           </button>
           <div className="spacer" />
+          {currentSessionId && <PresetSwitcher sessionId={currentSessionId} />}
           <button
             className={statePanelOpen ? "active" : ""}
             onClick={toggleStatePanel}
           >
             📊 状态
+          </button>
+          <button
+            onClick={() => setShowDebugPanel(true)}
+            disabled={!currentSessionId}
+            title="调试 - 查看发送内容"
+          >
+            🔍 调试
           </button>
         </div>
 

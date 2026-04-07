@@ -1,22 +1,32 @@
 import { useEffect, useState } from "react";
 import { useStoryStore } from "../stores/storyStore";
+import { useProtagonistStore } from "../stores/protagonistStore";
+import { usePresetStore } from "../stores/presetStore";
 
 interface Props {
   onSelect: (storyId: string, openerIndex: number) => void;
-  onSkip: () => void;
+  onSkip: (presetId?: string) => void;
   onCancel: () => void;
 }
 
 export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
   const { stories, loading, fetchStories } = useStoryStore();
+  const { protagonists, fetchProtagonists } = useProtagonistStore();
+  const { presets, fetchPresets } = usePresetStore();
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [selectedOpener, setSelectedOpener] = useState(0);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStories();
-  }, [fetchStories]);
+    fetchProtagonists();
+    fetchPresets();
+  }, [fetchStories, fetchProtagonists, fetchPresets]);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
+  const boundProtagonist = selectedStory?.protagonist_id
+    ? protagonists.find((p) => p.id === selectedStory.protagonist_id)
+    : null;
 
   return (
     <div className="story-selector-overlay" onClick={onCancel}>
@@ -24,7 +34,23 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
         <div className="story-selector-header">
           <h2>选择故事开始对话</h2>
           <div className="spacer" />
-          <button className="btn-ghost btn" onClick={onSkip}>
+          {presets.length > 0 && (
+            <div className="preset-picker-inline">
+              <label>预设：</label>
+              <select
+                value={selectedPresetId || ""}
+                onChange={(e) => setSelectedPresetId(e.target.value || null)}
+              >
+                <option value="">默认</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.is_default ? " ★" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button className="btn-ghost btn" onClick={() => onSkip(selectedPresetId || undefined)}>
             跳过，自由对话
           </button>
           <button className="btn-ghost btn" onClick={onCancel} style={{ padding: "6px 10px" }}>
@@ -38,7 +64,23 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
           <div className="story-selector-empty">
             <div className="icon" style={{ fontSize: 36, opacity: 0.3 }}>📚</div>
             <p>还没有故事，先去故事管理中创建吧</p>
-            <button className="btn" onClick={onSkip}>
+            {presets.length > 0 && (
+              <div className="preset-picker-inline" style={{ marginBottom: 12 }}>
+                <label>选择预设：</label>
+                <select
+                  value={selectedPresetId || ""}
+                  onChange={(e) => setSelectedPresetId(e.target.value || null)}
+                >
+                  <option value="">默认</option>
+                  {presets.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.is_default ? " ★" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <button className="btn" onClick={() => onSkip(selectedPresetId || undefined)}>
               直接开始自由对话
             </button>
           </div>
@@ -65,6 +107,9 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
                   </div>
                   <div className="story-select-card-meta">
                     {s.openers.length} 条开场白
+                    {s.protagonist_id && protagonists.find((p) => p.id === s.protagonist_id) && (
+                      <> · {protagonists.find((p) => p.id === s.protagonist_id)!.avatar_emoji} {protagonists.find((p) => p.id === s.protagonist_id)!.name}</>
+                    )}
                   </div>
                 </div>
               ))}
@@ -81,6 +126,16 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
                     <p>{selectedStory.background.length > 200
                       ? selectedStory.background.slice(0, 200) + "…"
                       : selectedStory.background}</p>
+                  </div>
+                )}
+
+                {boundProtagonist && (
+                  <div className="story-selector-protagonist">
+                    <span className="label">绑定主角</span>
+                    <div className="protagonist-info-row">
+                      <span className="protagonist-avatar-sm">{boundProtagonist.avatar_emoji}</span>
+                      <span>{boundProtagonist.name}</span>
+                    </div>
                   </div>
                 )}
 

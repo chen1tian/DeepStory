@@ -7,6 +7,12 @@ import type {
   Story,
   CreateStoryRequest,
   UpdateStoryRequest,
+  Protagonist,
+  CreateProtagonistRequest,
+  UpdateProtagonistRequest,
+  Preset,
+  CreatePresetRequest,
+  UpdatePresetRequest,
 } from "../types";
 
 const BASE = "/api";
@@ -101,4 +107,80 @@ export const aiPolish = (original: string, instruction: string, fieldType: strin
   request<{ result: string }>("/ai/polish", {
     method: "POST",
     body: JSON.stringify({ original, instruction, field_type: fieldType }),
+  });
+
+// Protagonists
+export const getProtagonists = () => request<Protagonist[]>("/protagonists");
+
+export const getProtagonist = (id: string) =>
+  request<Protagonist>(`/protagonists/${id}`);
+
+export const createProtagonist = (data: CreateProtagonistRequest = {}) =>
+  request<Protagonist>("/protagonists", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateProtagonist = (id: string, data: UpdateProtagonistRequest) =>
+  request<Protagonist>(`/protagonists/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteProtagonist = (id: string) =>
+  request<{ status: string }>(`/protagonists/${id}`, { method: "DELETE" });
+
+// Presets
+export const getPresets = () => request<Preset[]>("/presets");
+
+export const getPreset = (id: string) => request<Preset>(`/presets/${id}`);
+
+export const createPreset = (data: CreatePresetRequest = {}) =>
+  request<Preset>("/presets", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updatePreset = (id: string, data: UpdatePresetRequest) =>
+  request<Preset>(`/presets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deletePreset = (id: string) =>
+  request<{ status: string }>(`/presets/${id}`, { method: "DELETE" });
+
+// Session system prompt
+export const updateSessionSystemPrompt = (
+  sessionId: string,
+  opts: { system_prompt?: string; preset_id?: string }
+) =>
+  request<{ status: string; system_prompt: string }>(
+    `/sessions/${sessionId}/system-prompt`,
+    {
+      method: "PUT",
+      body: JSON.stringify(opts),
+    }
+  );
+
+// Debug
+export interface DebugMessage {
+  role: string;
+  content: string;
+  token_estimate: number;
+}
+
+export interface DebugPromptResponse {
+  messages: DebugMessage[];
+  budget: Record<string, number>;
+  total_messages: number;
+  system_prompt: string;
+  summary: string;
+  state_text: string;
+}
+
+export const getDebugPrompt = (sessionId: string, userInput = "（调试预览）") =>
+  request<DebugPromptResponse>(`/debug/${sessionId}/prompt`, {
+    method: "POST",
+    body: JSON.stringify({ user_input: userInput }),
   });

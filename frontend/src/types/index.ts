@@ -88,6 +88,7 @@ export interface CreateSessionRequest {
   system_prompt?: string;
   story_id?: string;
   opener_index?: number;
+  protagonist_id?: string;
 }
 
 export interface EditorTemplate {
@@ -111,6 +112,7 @@ export interface Story {
   openers: StoryOpener[];
   preset_characters: CharacterInfo[];
   color: string;
+  protagonist_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -131,4 +133,57 @@ export interface UpdateStoryRequest {
   openers?: StoryOpener[];
   preset_characters?: CharacterInfo[];
   color?: string;
+  protagonist_id?: string;
+}
+
+// --- Protagonist ---
+
+export interface Protagonist {
+  id: string;
+  name: string;
+  setting: string;
+  avatar_emoji: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateProtagonistRequest {
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateProtagonistRequest {
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+  is_default?: boolean;
+}
+
+// --- Preset ---
+
+export interface Preset {
+  id: string;
+  name: string;
+  description: string;
+  content: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePresetRequest {
+  name?: string;
+  description?: string;
+  content?: string;
+  is_default?: boolean;
+}
+
+export interface UpdatePresetRequest {
+  name?: string;
+  description?: string;
+  content?: string;
+  is_default?: boolean;
 }

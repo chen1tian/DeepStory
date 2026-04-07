@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta, Message
+from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta, Message, UpdateSystemPromptRequest
 from app.storage.file_storage import (
     generate_id,
     write_json,
@@ -13,6 +13,8 @@ from app.storage.file_storage import (
     delete_session,
 )
 from app.storage.story_storage import load_story
+from app.storage.protagonist_storage import load_protagonist, list_protagonists
+from app.storage.preset_storage import load_preset
 from app.services.chat_manager import create_branch_from
 
 router = APIRouter(tags=["sessions"])
@@ -37,6 +39,25 @@ async def create_session(req: CreateSessionRequest):
             idx = max(0, min(req.opener_index, len(openers) - 1)) if openers else -1
             if idx >= 0 and openers:
                 opener_content = openers[idx].get("content", "")
+            # Use story's bound protagonist if no explicit one provided
+            if not req.protagonist_id and story_data.get("protagonist_id"):
+                req.protagonist_id = story_data["protagonist_id"]
+
+    # Inject protagonist setting into system_prompt
+    protagonist_data = None
+    if req.protagonist_id:
+        protagonist_data = await load_protagonist(req.protagonist_id)
+    if not protagonist_data:
+        # Fallback to default protagonist
+        all_protagonists = await list_protagonists()
+        for p in all_protagonists:
+            if p.get("is_default"):
+                protagonist_data = p
+                break
+    if protagonist_data and protagonist_data.get("setting"):
+        pname = protagonist_data.get("name", "主角")
+        psetting = protagonist_data["setting"]
+        system_prompt = (system_prompt or "") + f"\n\n【主角设定 - {pname}】\n{psetting}"
 
     title = req.title
     if title == "新的对话" and story_title:
@@ -110,6 +131,27 @@ async def remove_session(session_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "deleted"}
+
+
+@router.put("/sessions/{session_id}/system-prompt")
+async def update_system_prompt(session_id: str, req: UpdateSystemPromptRequest):
+    data = await read_json(session_id, "session.json")
+    if data is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if req.preset_id:
+        preset_data = await load_preset(req.preset_id)
+        if preset_data is None:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        data["system_prompt"] = preset_data.get("content", "")
+    elif req.system_prompt is not None:
+        data["system_prompt"] = req.system_prompt
+    else:
+        raise HTTPException(status_code=400, detail="Provide system_prompt or preset_id")
+
+    data["updated_at"] = datetime.now().isoformat()
+    await write_json(session_id, "session.json", data)
+    return {"status": "updated", "system_prompt": data["system_prompt"]}
 
 
 @router.post("/sessions/{session_id}/branch")

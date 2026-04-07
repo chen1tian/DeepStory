@@ -8,7 +8,7 @@ interface SessionState {
   loading: boolean;
 
   fetchSessions: () => Promise<void>;
-  addSession: (title?: string, storyId?: string, openerIndex?: number) => Promise<Session>;
+  addSession: (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string) => Promise<Session>;
   removeSession: (id: string) => Promise<void>;
   selectSession: (id: string) => void;
 }
@@ -28,11 +28,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  addSession: async (title?: string, storyId?: string, openerIndex?: number) => {
+  addSession: async (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string) => {
     const session = await createSession({
       title: title || "新的对话",
+      system_prompt: systemPrompt,
       story_id: storyId,
       opener_index: openerIndex,
+      protagonist_id: protagonistId,
     });
     set((s) => ({
       sessions: [session, ...s.sessions],

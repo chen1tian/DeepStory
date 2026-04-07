@@ -73,6 +73,7 @@ class Story(BaseModel):
     openers: list[StoryOpener] = Field(default_factory=list)
     preset_characters: list[CharacterInfo] = Field(default_factory=list)
     color: str = "#6366f1"  # tag / card accent color
+    protagonist_id: str | None = None  # bound protagonist
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -93,6 +94,66 @@ class UpdateStoryRequest(BaseModel):
     openers: list[StoryOpener] | None = None
     preset_characters: list[CharacterInfo] | None = None
     color: str | None = None
+    protagonist_id: str | None = None
+
+
+# --- Protagonist schemas ---
+
+
+class Protagonist(BaseModel):
+    id: str
+    name: str = "未命名主角"
+    setting: str = ""  # character background / personality / description
+    avatar_emoji: str = "🧑"
+    is_default: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateProtagonistRequest(BaseModel):
+    name: str = "未命名主角"
+    setting: str = ""
+    avatar_emoji: str = "🧑"
+    is_default: bool = False
+
+
+class UpdateProtagonistRequest(BaseModel):
+    name: str | None = None
+    setting: str | None = None
+    avatar_emoji: str | None = None
+    is_default: bool | None = None
+
+
+# --- Preset schemas ---
+
+
+class Preset(BaseModel):
+    id: str
+    name: str = "未命名预设"
+    description: str = ""
+    content: str = ""  # system prompt text
+    is_default: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreatePresetRequest(BaseModel):
+    name: str = "未命名预设"
+    description: str = ""
+    content: str = ""
+    is_default: bool = False
+
+
+class UpdatePresetRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    content: str | None = None
+    is_default: bool | None = None
+
+
+class UpdateSystemPromptRequest(BaseModel):
+    system_prompt: str | None = None
+    preset_id: str | None = None
 
 
 # --- API request/response schemas ---
@@ -103,6 +164,7 @@ class CreateSessionRequest(BaseModel):
     system_prompt: str = ""
     story_id: str | None = None
     opener_index: int = 0
+    protagonist_id: str | None = None
 
 
 class SessionResponse(BaseModel):

@@ -4,9 +4,11 @@ import { useChatStore } from "../stores/chatStore";
 interface Props {
   onNewSession: () => void;
   onManageStories: () => void;
+  onManageProtagonists: () => void;
+  onManagePresets: () => void;
 }
 
-export default function SessionList({ onNewSession, onManageStories }: Props) {
+export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManagePresets }: Props) {
   const sessions = useSessionStore((s) => s.sessions);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const selectSession = useSessionStore((s) => s.selectSession);
@@ -53,6 +55,12 @@ export default function SessionList({ onNewSession, onManageStories }: Props) {
       <div className="sidebar-footer">
         <button className="btn-ghost btn sidebar-stories-btn" onClick={onManageStories}>
           📚 故事管理
+        </button>
+        <button className="btn-ghost btn sidebar-stories-btn" onClick={onManageProtagonists}>
+          🎭 主角管理
+        </button>
+        <button className="btn-ghost btn sidebar-stories-btn" onClick={onManagePresets}>
+          📝 预设管理
         </button>
       </div>
     </>
