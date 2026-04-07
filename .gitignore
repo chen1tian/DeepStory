@@ -30,3 +30,6 @@ Desktop.ini
 
 # Logs
 *.log
+
+# Data
+/backend/data
