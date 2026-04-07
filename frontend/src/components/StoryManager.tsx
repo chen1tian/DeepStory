@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStoryStore } from "../stores/storyStore";
+import AIAssistModal from "./AIAssistModal";
 import type { Story, StoryOpener, CharacterInfo } from "../types";
 
 export default function StoryManager({ onClose }: { onClose: () => void }) {
@@ -119,6 +120,20 @@ function StoryForm({
     color: story.color || "#6366f1",
   });
   const [saving, setSaving] = useState(false);
+  const [aiAssist, setAiAssist] = useState<{
+    fieldType: string;
+    original: string;
+    openerIndex?: number;
+  } | null>(null);
+
+  const handleAiResult = (text: string) => {
+    if (!aiAssist) return;
+    if (aiAssist.fieldType === "background") {
+      update("background", text);
+    } else if (aiAssist.fieldType === "opener" && aiAssist.openerIndex != null) {
+      updateOpener(aiAssist.openerIndex, "content", text);
+    }
+  };
 
   const update = <K extends keyof FormData>(key: K, val: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: val }));
@@ -205,7 +220,15 @@ function StoryForm({
       </div>
 
       <div className="story-form-row">
-        <label>故事背景 (系统提示词)</label>
+        <div className="story-form-label-row">
+          <label>故事背景 (系统提示词)</label>
+          <button
+            className="btn-small btn-ai"
+            onClick={() => setAiAssist({ fieldType: "background", original: form.background })}
+          >
+            ✨ AI 润色
+          </button>
+        </div>
         <textarea
           value={form.background}
           onChange={(e) => update("background", e.target.value)}
@@ -223,12 +246,21 @@ function StoryForm({
         </div>
         {form.openers.map((op, i) => (
           <div key={i} className="story-opener-item">
-            <input
-              value={op.label}
-              onChange={(e) => updateOpener(i, "label", e.target.value)}
-              placeholder={`开场白 ${i + 1} 标签`}
-              className="opener-label-input"
-            />
+            <div className="story-form-label-row">
+              <input
+                value={op.label}
+                onChange={(e) => updateOpener(i, "label", e.target.value)}
+                placeholder={`开场白 ${i + 1} 标签`}
+                className="opener-label-input"
+                style={{ flex: 1 }}
+              />
+              <button
+                className="btn-small btn-ai"
+                onClick={() => setAiAssist({ fieldType: "opener", original: op.content, openerIndex: i })}
+              >
+                ✨ AI
+              </button>
+            </div>
             <textarea
               value={op.content}
               onChange={(e) => updateOpener(i, "content", e.target.value)}
@@ -278,6 +310,15 @@ function StoryForm({
           {saving ? "保存中…" : "💾 保存"}
         </button>
       </div>
+
+      {aiAssist && (
+        <AIAssistModal
+          original={aiAssist.original}
+          fieldType={aiAssist.fieldType}
+          onAccept={handleAiResult}
+          onClose={() => setAiAssist(null)}
+        />
+      )}
     </div>
   );
 }

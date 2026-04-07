@@ -55,12 +55,14 @@ from app.api.chat import router as chat_router  # noqa: E402
 from app.api.state import router as state_router  # noqa: E402
 from app.api.editor import router as editor_router  # noqa: E402
 from app.api.stories import router as stories_router  # noqa: E402
+from app.api.ai import router as ai_router  # noqa: E402
 
 app.include_router(sessions_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(state_router, prefix="/api")
 app.include_router(editor_router, prefix="/api")
 app.include_router(stories_router, prefix="/api")
+app.include_router(ai_router, prefix="/api")
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402

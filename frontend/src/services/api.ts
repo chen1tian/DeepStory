@@ -95,3 +95,10 @@ export const updateStory = (id: string, data: UpdateStoryRequest) =>
 
 export const deleteStory = (id: string) =>
   request<{ status: string }>(`/stories/${id}`, { method: "DELETE" });
+
+// AI Assist
+export const aiPolish = (original: string, instruction: string, fieldType: string) =>
+  request<{ result: string }>("/ai/polish", {
+    method: "POST",
+    body: JSON.stringify({ original, instruction, field_type: fieldType }),
+  });
