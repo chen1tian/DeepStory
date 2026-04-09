@@ -20,13 +20,13 @@ from app.services.chat_manager import create_branch_from
 router = APIRouter(tags=["sessions"])
 
 
-async def _get_default_preset_content() -> str:
-    """Find the default preset and return its content."""
+async def _get_default_preset() -> tuple[str | None, str]:
+    """Find the default preset and return (id, content)."""
     presets = await list_presets()
     for p in presets:
         if p.get("is_default") and p.get("content"):
-            return p["content"]
-    return ""
+            return p.get("id"), p["content"]
+    return None, ""
 
 
 @router.post("/sessions", response_model=SessionResponse)
@@ -39,7 +39,8 @@ async def create_session(req: CreateSessionRequest):
     story_title: str | None = None
 
     # 1. Start with default preset as the base system prompt
-    preset_content = await _get_default_preset_content()
+    default_preset_id, preset_content = await _get_default_preset()
+    active_preset_id = default_preset_id
     if not system_prompt:
         system_prompt = preset_content
 
@@ -90,6 +91,7 @@ async def create_session(req: CreateSessionRequest):
         updated_at=now,
         system_prompt=system_prompt,
         active_branch=[],
+        preset_id=active_preset_id,
     )
     await write_json(session_id, "session.json", session.model_dump())
 
@@ -115,6 +117,7 @@ async def create_session(req: CreateSessionRequest):
         title=session.title,
         created_at=session.created_at,
         updated_at=session.updated_at,
+        preset_id=session.preset_id,
     )
 
 
@@ -127,6 +130,7 @@ async def get_sessions():
             title=s.get("title", ""),
             created_at=s.get("created_at", ""),
             updated_at=s.get("updated_at", ""),
+            preset_id=s.get("preset_id"),
         )
         for s in sessions
     ]
@@ -142,6 +146,7 @@ async def get_session(session_id: str):
         title=data.get("title", ""),
         created_at=data.get("created_at", ""),
         updated_at=data.get("updated_at", ""),
+        preset_id=data.get("preset_id"),
     )
 
 
@@ -171,6 +176,7 @@ async def update_system_prompt(session_id: str, req: UpdateSystemPromptRequest):
             protagonist_section = old_prompt[old_prompt.index(protagonist_marker):]
             new_prompt = new_prompt + protagonist_section
         data["system_prompt"] = new_prompt
+        data["preset_id"] = req.preset_id
     elif req.system_prompt is not None:
         data["system_prompt"] = req.system_prompt
     else:

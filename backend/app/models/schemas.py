@@ -23,6 +23,7 @@ class SessionMeta(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     system_prompt: str = ""
     active_branch: list[str] = Field(default_factory=lambda: [])  # ordered message ids
+    preset_id: str | None = None
 
 
 class SummaryData(BaseModel):
@@ -320,6 +321,7 @@ class SessionResponse(BaseModel):
     title: str
     created_at: str
     updated_at: str
+    preset_id: str | None = None
 
 
 class MessagesResponse(BaseModel):

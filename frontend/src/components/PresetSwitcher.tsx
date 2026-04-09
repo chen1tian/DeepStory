@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePresetStore } from "../stores/presetStore";
+import { useSessionStore } from "../stores/sessionStore";
 import { updateSessionSystemPrompt } from "../services/api";
 
 interface Props {
@@ -8,17 +9,26 @@ interface Props {
 
 export default function PresetSwitcher({ sessionId }: Props) {
   const { presets, fetchPresets } = usePresetStore();
+  const sessions = useSessionStore((s) => s.sessions);
   const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     fetchPresets();
   }, [fetchPresets]);
 
+  const currentSession = sessions.find((s) => s.id === sessionId);
+  // Use session's preset_id, or fall back to default preset for old sessions
+  const currentPresetId = currentSession?.preset_id
+    || presets.find((p) => p.is_default)?.id
+    || "";
+
   const handleSwitch = async (presetId: string) => {
-    if (!presetId) return;
+    if (!presetId || presetId === currentPresetId) return;
     setApplying(true);
     try {
       await updateSessionSystemPrompt(sessionId, { preset_id: presetId });
+      // Update local session data
+      useSessionStore.getState().updateSessionPreset(sessionId, presetId);
     } finally {
       setApplying(false);
     }
@@ -29,8 +39,8 @@ export default function PresetSwitcher({ sessionId }: Props) {
   return (
     <div className="preset-switcher">
       <select
+        value={currentPresetId}
         onChange={(e) => handleSwitch(e.target.value)}
-        defaultValue=""
         disabled={applying}
         title="切换预设（立即对后续消息生效）"
       >

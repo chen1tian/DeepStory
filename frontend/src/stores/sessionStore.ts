@@ -14,6 +14,7 @@ interface SessionState {
   closeTab: (id: string) => void;                 // close tab only
   openTab: (id: string) => void;                  // reopen from history
   selectSession: (id: string) => void;
+  updateSessionPreset: (id: string, presetId: string) => void;
 }
 
 const LAST_SESSION_KEY = "lastSessionId";
@@ -113,5 +114,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   selectSession: (id: string) => {
     localStorage.setItem(LAST_SESSION_KEY, id);
     set({ currentSessionId: id });
+  },
+
+  updateSessionPreset: (id: string, presetId: string) => {
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === id ? { ...sess, preset_id: presetId } : sess
+      ),
+    }));
   },
 }));
