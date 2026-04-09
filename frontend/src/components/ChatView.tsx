@@ -5,6 +5,7 @@ import { useUIStore } from "../stores/uiStore";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import TokenBudgetBar from "./TokenBudgetBar";
+import SceneActions from "./SceneActions";
 import { branchFromMessage } from "../services/api";
 
 export default function ChatView() {
@@ -40,6 +41,7 @@ export default function ChatView() {
   return (
     <>
       <MessageList onBranch={handleBranch} />
+      <SceneActions />
       <div className="input-area">
         <MessageInput />
         <TokenBudgetBar />
