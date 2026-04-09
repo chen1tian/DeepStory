@@ -1,36 +1,56 @@
-请分析以下聊天记录，提取结构化信息。返回严格的 JSON 格式。
+你是一个RPG游戏状态追踪器。分析聊天记录中的变化，只提取**发生了改变的部分**（增量/delta）。
 
-## 之前的状态
+## 当前游戏状态
 {previous_state}
 
 ## 新的聊天记录
 {new_messages}
 
-请返回以下 JSON 格式（不要包含 markdown 代码块标记）：
+请返回以下 JSON 格式（只包含有变化的字段，没变化的不要写）：
 {{
-  "characters": [
+  "character_updates": [
     {{
-      "name": "角色名称",
-      "description": "角色描述",
-      "status": "当前状态（如：健康/受伤/离开等）"
+      "name": "角色名",
+      "is_protagonist": true,
+      "health": 80,
+      "injuries": ["右臂剑伤"],
+      "status_effects": [{{"name": "中毒", "source": "毒蛇", "impact": "每回合体力-5", "remaining_turns": 3}}],
+      "mood": "紧张",
+      "description": "角色简短描述",
+      "tags": ["新获得的经历标签"],
+      "relationships": [{{"npc": "某NPC", "attitude": "友好", "note": "曾搭救过"}}]
     }}
   ],
-  "events": [
-    {{
-      "description": "事件描述",
-      "timestamp": "事件发生的叙事时间"
-    }}
+  "inventory_changes": [
+    {{"action": "add", "name": "物品名", "category": "consumable", "quantity": 1, "description": "物品描述", "effect": "效果"}},
+    {{"action": "remove", "name": "物品名", "quantity": 1}},
+    {{"action": "use", "name": "物品名", "quantity": 1}}
   ],
-  "world_state": {{
-    "location": "当前场景位置",
-    "time": "叙事中的时间",
-    "atmosphere": "氛围描述",
-    "key_items": ["重要物品或线索"]
-  }}
+  "scene_changes": {{
+    "location": "新地点",
+    "sub_location": "具体区域",
+    "time": "时间",
+    "weather": "天气",
+    "atmosphere": "氛围",
+    "danger_level": "低/中/高/极高",
+    "objects": [{{"name": "可交互物", "interactable": true, "description": "描述"}}],
+    "exits": [{{"direction": "东", "destination": "集市", "accessible": true}}],
+    "npcs": [{{"name": "NPC名", "attitude": "友好", "status": "正在打坐"}}]
+  }},
+  "quest_updates": [
+    {{"name": "任务名", "type": "main", "source_npc": "来源NPC", "objective": "目标", "progress": "进度描述", "status": "active"}}
+  ],
+  "new_events": [
+    {{"description": "发生了什么事", "changes": ["主角体力-20", "获得灵石×5"], "timestamp": "叙事时间"}}
+  ]
 }}
 
-注意：
-- 合并之前的状态和新信息，不要丢失之前已有的角色和事件
-- 如果角色状态发生变化，更新对应角色的 status
-- 新事件追加到 events 列表末尾
-- world_state 反映最新的状态
+重要规则：
+- 只返回JSON，不要有其他文字
+- character_updates: 只列出状态有变化的角色。新出现的角色也要列出
+- 主角必须标记 "is_protagonist": true
+- inventory_changes: action 只能是 add/remove/use。category 只能是 equipment/consumable/key_item/material
+- scene_changes: 只在场景有变化时才填写（角色移动、时间推进、环境变化等）
+- quest_updates: 新任务或任务进度变化时才填写
+- new_events: 记录这段对话中发生的重要事件和造成的状态变更
+- 如果某个类别没有变化，传空数组 [] 或空对象 {{}}

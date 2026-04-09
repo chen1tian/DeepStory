@@ -14,10 +14,19 @@ from app.storage.file_storage import (
 )
 from app.storage.story_storage import load_story
 from app.storage.protagonist_storage import load_protagonist, list_protagonists
-from app.storage.preset_storage import load_preset
+from app.storage.preset_storage import load_preset, list_presets
 from app.services.chat_manager import create_branch_from
 
 router = APIRouter(tags=["sessions"])
+
+
+async def _get_default_preset_content() -> str:
+    """Find the default preset and return its content."""
+    presets = await list_presets()
+    for p in presets:
+        if p.get("is_default") and p.get("content"):
+            return p["content"]
+    return ""
 
 
 @router.post("/sessions", response_model=SessionResponse)
@@ -29,11 +38,22 @@ async def create_session(req: CreateSessionRequest):
     opener_content: str | None = None
     story_title: str | None = None
 
-    # If story_id provided, load story and override system_prompt with background
+    # 1. Start with default preset as the base system prompt
+    preset_content = await _get_default_preset_content()
+    if not system_prompt:
+        system_prompt = preset_content
+
+    # 2. If story_id provided, append story background
     if req.story_id:
         story_data = await load_story(req.story_id)
         if story_data:
-            system_prompt = story_data.get("background", "") or system_prompt
+            story_bg = story_data.get("background", "")
+            if story_bg:
+                # Preset as base + story background appended
+                if preset_content and system_prompt == preset_content:
+                    system_prompt = preset_content + "\n\n【故事背景】\n" + story_bg
+                else:
+                    system_prompt = story_bg
             story_title = story_data.get("title", "")
             openers = story_data.get("openers", [])
             idx = max(0, min(req.opener_index, len(openers) - 1)) if openers else -1
@@ -143,7 +163,14 @@ async def update_system_prompt(session_id: str, req: UpdateSystemPromptRequest):
         preset_data = await load_preset(req.preset_id)
         if preset_data is None:
             raise HTTPException(status_code=404, detail="Preset not found")
-        data["system_prompt"] = preset_data.get("content", "")
+        # Preserve protagonist setting when switching presets
+        new_prompt = preset_data.get("content", "")
+        old_prompt = data.get("system_prompt", "")
+        protagonist_marker = "\n\n【主角设定 - "
+        if protagonist_marker in old_prompt:
+            protagonist_section = old_prompt[old_prompt.index(protagonist_marker):]
+            new_prompt = new_prompt + protagonist_section
+        data["system_prompt"] = new_prompt
     elif req.system_prompt is not None:
         data["system_prompt"] = req.system_prompt
     else:

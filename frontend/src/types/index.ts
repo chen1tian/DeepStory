@@ -41,11 +41,143 @@ export interface WorldState {
   key_items: string[];
 }
 
+// ── RPG State Types ──
+
+export interface StatusEffect {
+  name: string;
+  source: string;
+  impact: string;
+  remaining_turns: number | null;
+}
+
+export interface EquipmentItem {
+  name: string;
+  slot: string;
+  bonus: string;
+  durability: number;
+}
+
+export interface Skill {
+  name: string;
+  level: number;
+  cooldown: number;
+  available: boolean;
+  restriction: string;
+}
+
+export interface Relationship {
+  npc: string;
+  attitude: string;
+  note: string;
+}
+
+export interface RPGCharacter {
+  name: string;
+  description: string;
+  is_protagonist: boolean;
+  health: number;
+  max_health: number;
+  energy: number;
+  max_energy: number;
+  status_effects: StatusEffect[];
+  injuries: string[];
+  mood: string;
+  equipment: EquipmentItem[];
+  skills: Skill[];
+  relationships: Relationship[];
+  tags: string[];
+}
+
+export interface InventoryItem {
+  name: string;
+  category: string;
+  description: string;
+  quantity: number;
+  effect: string;
+  related_quest: string;
+}
+
+export interface SceneObject {
+  name: string;
+  interactable: boolean;
+  description: string;
+}
+
+export interface SceneExit {
+  direction: string;
+  destination: string;
+  accessible: boolean;
+  note: string;
+}
+
+export interface SceneNPC {
+  name: string;
+  attitude: string;
+  status: string;
+}
+
+export interface MapLocation {
+  name: string;
+  discovered_at: string;
+  notes: string;
+}
+
+export interface SceneState {
+  location: string;
+  sub_location: string;
+  time: string;
+  weather: string;
+  atmosphere: string;
+  danger_level: string;
+  objects: SceneObject[];
+  exits: SceneExit[];
+  npcs: SceneNPC[];
+}
+
+export interface QuestInfo {
+  name: string;
+  type: string;
+  source_npc: string;
+  objective: string;
+  progress: string;
+  status: string;
+}
+
+export interface StateChangeEvent {
+  turn: number;
+  description: string;
+  changes: string[];
+  timestamp: string;
+}
+
+export interface RPGStateData {
+  characters: RPGCharacter[];
+  inventory: InventoryItem[];
+  scene: SceneState;
+  explored_locations: MapLocation[];
+  region_connections: Record<string, string[]>;
+  quests: QuestInfo[];
+  event_log: StateChangeEvent[];
+  version: number;
+  turn_count: number;
+}
+
+export interface RPGStateSummary {
+  protagonist_summary: string;
+  scene_summary: string;
+  active_quest: string;
+  key_inventory: string;
+  recent_events: string;
+  nearby_npcs: string;
+}
+
 export interface StateData {
   characters: CharacterInfo[];
   events: EventInfo[];
   world_state: WorldState;
   version: number;
+  rpg: RPGStateData;
+  rpg_summary: RPGStateSummary;
 }
 
 export interface TokenBudgetInfo {

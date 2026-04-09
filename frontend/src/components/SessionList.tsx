@@ -27,22 +27,11 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
 
   return (
     <>
-      <div className="sidebar-header">
-        <h2>对话列表</h2>
-        <button className="btn" onClick={onNewSession} style={{ padding: "4px 12px" }}>
-          + 新建
-        </button>
-      </div>
-      <div className="session-list">
-        {sessions.length === 0 && (
-          <div style={{ padding: 16, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
-            暂无对话，点击上方按钮新建
-          </div>
-        )}
+      <div className="nav-sessions">
         {sessions.map((s) => (
           <div
             key={s.id}
-            className={`session-item ${s.id === currentSessionId ? "active" : ""}`}
+            className={`nav-session-item ${s.id === currentSessionId ? "active" : ""}`}
             onClick={() => handleSelect(s.id)}
           >
             <span className="title">{s.title}</span>
@@ -51,16 +40,19 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
             </button>
           </div>
         ))}
+        <button className="btn nav-new-btn" onClick={onNewSession}>
+          + 新建
+        </button>
       </div>
-      <div className="sidebar-footer">
-        <button className="btn-ghost btn sidebar-stories-btn" onClick={onManageStories}>
-          📚 故事管理
+      <div className="nav-actions">
+        <button className="btn-ghost btn nav-action-btn" onClick={onManageStories}>
+          📚 故事
         </button>
-        <button className="btn-ghost btn sidebar-stories-btn" onClick={onManageProtagonists}>
-          🎭 主角管理
+        <button className="btn-ghost btn nav-action-btn" onClick={onManageProtagonists}>
+          🎭 主角
         </button>
-        <button className="btn-ghost btn sidebar-stories-btn" onClick={onManagePresets}>
-          📝 预设管理
+        <button className="btn-ghost btn nav-action-btn" onClick={onManagePresets}>
+          📝 预设
         </button>
       </div>
     </>

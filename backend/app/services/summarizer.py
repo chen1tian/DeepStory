@@ -6,9 +6,10 @@ import aiofiles
 import structlog
 
 from app.config import settings
-from app.models.schemas import Message, SummaryData, StateData
+from app.models.schemas import Message, SummaryData, StateData, RPGStateDelta, StateChangeEvent
 from app.services.llm_service import chat_completion
 from app.services.token_counter import count_tokens
+from app.services.state_manager import get_state, apply_rpg_delta
 from app.storage.file_storage import read_json, write_json
 
 log = structlog.get_logger()
@@ -82,10 +83,9 @@ async def incremental_summarize(session_id: str, branch_messages: list[Message])
 
 
 async def extract_state(session_id: str, branch_messages: list[Message]) -> StateData:
-    """Extract structured state (characters, events, world) from recent messages."""
-    current_state = await _load_state(session_id)
+    """Extract RPG state delta from recent messages and apply to full state."""
+    current_state = await get_state(session_id)
 
-    # Only process the last 10 messages for state extraction
     recent = branch_messages[-10:]
     if not recent:
         return current_state
@@ -95,37 +95,75 @@ async def extract_state(session_id: str, branch_messages: list[Message]) -> Stat
         for m in recent
     )
 
+    # Build current state summary for context
+    rpg = current_state.rpg
+    state_context = json.dumps({
+        "characters": [{"name": c.name, "health": c.health, "injuries": c.injuries,
+                        "status_effects": [e.name for e in c.status_effects],
+                        "is_protagonist": c.is_protagonist}
+                       for c in rpg.characters],
+        "inventory": [{"name": i.name, "category": i.category, "quantity": i.quantity}
+                      for i in rpg.inventory],
+        "scene": {"location": rpg.scene.location, "time": rpg.scene.time},
+        "active_quests": [{"name": q.name, "status": q.status} for q in rpg.quests if q.status == "active"],
+    }, ensure_ascii=False, indent=2)
+
     template = await _load_template("extract_state.txt")
     prompt = template.format(
-        previous_state=json.dumps(current_state.model_dump(), ensure_ascii=False, indent=2),
+        previous_state=state_context,
         new_messages=new_text,
     )
 
     try:
         result = await chat_completion([
-            {"role": "system", "content": "你是一个结构化数据提取助手。只返回JSON，不要包含任何其他文本或markdown标记。"},
+            {"role": "system", "content": "你是一个RPG游戏状态提取助手。只返回JSON，不要包含任何其他文本或markdown标记。"},
             {"role": "user", "content": prompt},
         ])
 
-        # Try to parse JSON from the result
         result = result.strip()
         if result.startswith("```"):
             lines = result.split("\n")
             result = "\n".join(lines[1:-1])
 
         parsed = json.loads(result)
-        new_state = StateData(**parsed, version=current_state.version + 1)
+        delta = RPGStateDelta(**parsed)
 
-        await write_json(session_id, "state.json", new_state.model_dump())
-        log.info("state_extracted", session_id=session_id, version=new_state.version)
-        return new_state
+        # Apply delta to full state
+        updated_state = await apply_rpg_delta(session_id, delta)
+
+        # Also update legacy fields for backward compat
+        _sync_legacy_fields(updated_state)
+        from app.services.state_manager import update_state
+        await update_state(session_id, updated_state)
+
+        log.info("rpg_state_extracted", session_id=session_id,
+                 char_updates=len(delta.character_updates),
+                 inv_changes=len(delta.inventory_changes),
+                 events=len(delta.new_events))
+        return updated_state
     except Exception:
         log.exception("state_extraction_failed", session_id=session_id)
         return current_state
 
 
-async def _load_state(session_id: str) -> StateData:
-    data = await read_json(session_id, "state.json")
-    if data is None:
-        return StateData()
+def _sync_legacy_fields(state: StateData) -> None:
+    """Keep old CharacterInfo/EventInfo/WorldState in sync for backward compat."""
+    from app.models.schemas import CharacterInfo, EventInfo, WorldState
+    rpg = state.rpg
+    state.characters = [
+        CharacterInfo(name=c.name, description=c.description,
+                      status=f"HP:{c.health}/{c.max_health}" + (f" 伤:{','.join(c.injuries)}" if c.injuries else ""))
+        for c in rpg.characters
+    ]
+    state.events = [
+        EventInfo(description=e.description, timestamp=e.timestamp)
+        for e in rpg.event_log[-5:]
+    ]
+    state.world_state = WorldState(
+        location=rpg.scene.location,
+        time=rpg.scene.time,
+        atmosphere=rpg.scene.atmosphere,
+        key_items=[i.name for i in rpg.inventory if i.category == "key_item"],
+    )
+    state.version = rpg.version
     return StateData(**data)

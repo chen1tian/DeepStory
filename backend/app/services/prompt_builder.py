@@ -41,30 +41,63 @@ async def build_chat_messages(
         system_prompt = await _load_template("system.txt")
     sys_tokens = count_tokens(system_prompt) + 4
 
-    # 2. State / background
+    # 2. State / background — use RPG summary (compact) for prompt injection
     state_text = ""
     state_tokens = 0
-    if state and (state.characters or state.events or state.world_state.location):
+    if state:
         parts = []
-        if state.characters:
-            parts.append("## 角色信息")
-            for c in state.characters:
-                parts.append(f"- {c.name}: {c.description} (状态: {c.status})")
-        if state.events:
-            parts.append("## 近期事件")
-            for e in state.events[-5:]:  # last 5 events
-                parts.append(f"- {e.description}")
-        ws = state.world_state
-        if ws.location:
-            parts.append(f"## 当前场景\n位置: {ws.location}, 时间: {ws.time}, 氛围: {ws.atmosphere}")
-            if ws.key_items:
-                parts.append(f"重要物品: {', '.join(ws.key_items)}")
-        state_text = "\n".join(parts)
-        state_tokens = count_tokens(state_text) + 4
-        # Cap state tokens
-        if state_tokens > settings.state_max_tokens:
-            state_text = state_text[: settings.state_max_tokens * 3]  # rough char trim
+        rpg_sum = state.rpg_summary
+        # Always-inject compact RPG summary
+        if rpg_sum.protagonist_summary:
+            parts.append(f"【主角】{rpg_sum.protagonist_summary}")
+        if rpg_sum.scene_summary:
+            parts.append(f"【场景】{rpg_sum.scene_summary}")
+        if rpg_sum.active_quest:
+            parts.append(f"【任务】{rpg_sum.active_quest}")
+        if rpg_sum.key_inventory:
+            parts.append(f"【物品】{rpg_sum.key_inventory}")
+        if rpg_sum.recent_events:
+            parts.append(f"【近况】{rpg_sum.recent_events}")
+        if rpg_sum.nearby_npcs:
+            parts.append(f"【在场】{rpg_sum.nearby_npcs}")
+
+        # Constraints from status effects and injuries
+        rpg = state.rpg
+        protagonist = next((c for c in rpg.characters if c.is_protagonist), None)
+        if protagonist:
+            constraints = []
+            for eff in protagonist.status_effects:
+                constraints.append(f"{eff.name}: {eff.impact}")
+            for inj in protagonist.injuries:
+                constraints.append(f"伤势 - {inj}")
+            restricted_skills = [s for s in protagonist.skills if not s.available]
+            for sk in restricted_skills:
+                constraints.append(f"技能受限 - {sk.name}: {sk.restriction}")
+            if constraints:
+                parts.append(f"【行动约束】描写中必须体现: {'; '.join(constraints)}")
+
+        # Fallback to legacy fields if no RPG data yet
+        if not parts:
+            if state.characters:
+                parts.append("## 角色信息")
+                for c in state.characters:
+                    parts.append(f"- {c.name}: {c.description} (状态: {c.status})")
+            if state.events:
+                parts.append("## 近期事件")
+                for e in state.events[-5:]:
+                    parts.append(f"- {e.description}")
+            ws = state.world_state
+            if ws.location:
+                parts.append(f"## 当前场景\n位置: {ws.location}, 时间: {ws.time}, 氛围: {ws.atmosphere}")
+                if ws.key_items:
+                    parts.append(f"重要物品: {', '.join(ws.key_items)}")
+
+        if parts:
+            state_text = "\n".join(parts)
             state_tokens = count_tokens(state_text) + 4
+            if state_tokens > settings.state_max_tokens:
+                state_text = state_text[: settings.state_max_tokens * 3]
+                state_tokens = count_tokens(state_text) + 4
 
     # 3. Summary
     summary_text = ""

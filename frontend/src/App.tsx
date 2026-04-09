@@ -99,22 +99,19 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? "" : "collapsed"}`}>
+      {/* Top Navigation Bar */}
+      <nav className="top-nav">
         <SessionList
           onNewSession={handleNewSession}
           onManageStories={() => setShowStoryManager(true)}
           onManageProtagonists={() => setShowProtagonistManager(true)}
           onManagePresets={() => setShowPresetManager(true)}
         />
-      </aside>
+      </nav>
 
       {/* Main */}
       <div className="main-content">
         <div className="top-bar">
-          <button onClick={toggleSidebar} title="切换侧边栏">
-            ☰
-          </button>
           <button className={editMode ? "" : "active"} onClick={() => editMode && toggleEditMode()}>
             💬 聊天
           </button>

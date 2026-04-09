@@ -49,11 +49,159 @@ class WorldState(BaseModel):
     key_items: list[str] = Field(default_factory=list)
 
 
+# ── RPG State System ──
+
+class StatusEffect(BaseModel):
+    name: str
+    source: str = ""
+    impact: str = ""
+    remaining_turns: int | None = None
+
+
+class EquipmentItem(BaseModel):
+    name: str
+    slot: str = ""  # weapon, armor, accessory
+    bonus: str = ""
+    durability: int = 100
+
+
+class Skill(BaseModel):
+    name: str
+    level: int = 1
+    cooldown: int = 0
+    available: bool = True
+    restriction: str = ""  # e.g. "因伤受限"
+
+
+class Relationship(BaseModel):
+    npc: str
+    attitude: str = ""  # 友好/中立/敌对
+    note: str = ""
+
+
+class RPGCharacter(BaseModel):
+    name: str
+    description: str = ""
+    is_protagonist: bool = False
+    # Attributes
+    health: int = 100
+    max_health: int = 100
+    energy: int = 100
+    max_energy: int = 100
+    # Status
+    status_effects: list[StatusEffect] = Field(default_factory=list)
+    injuries: list[str] = Field(default_factory=list)
+    mood: str = ""
+    # Equipment & Skills
+    equipment: list[EquipmentItem] = Field(default_factory=list)
+    skills: list[Skill] = Field(default_factory=list)
+    # Social
+    relationships: list[Relationship] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)  # ["曾救过村长女儿", "被黑风寨通缉"]
+
+
+class InventoryItem(BaseModel):
+    name: str
+    category: str = ""  # equipment, consumable, key_item, material
+    description: str = ""
+    quantity: int = 1
+    effect: str = ""
+    related_quest: str = ""
+
+
+class SceneObject(BaseModel):
+    name: str
+    interactable: bool = True
+    description: str = ""
+
+
+class SceneExit(BaseModel):
+    direction: str
+    destination: str
+    accessible: bool = True
+    note: str = ""
+
+
+class SceneNPC(BaseModel):
+    name: str
+    attitude: str = ""
+    status: str = ""
+
+
+class MapLocation(BaseModel):
+    name: str
+    discovered_at: str = ""
+    notes: str = ""
+
+
+class SceneState(BaseModel):
+    location: str = ""
+    sub_location: str = ""
+    time: str = ""
+    weather: str = ""
+    atmosphere: str = ""
+    danger_level: str = ""
+    objects: list[SceneObject] = Field(default_factory=list)
+    exits: list[SceneExit] = Field(default_factory=list)
+    npcs: list[SceneNPC] = Field(default_factory=list)
+
+
+class QuestInfo(BaseModel):
+    name: str
+    type: str = "side"  # main, side
+    source_npc: str = ""
+    objective: str = ""
+    progress: str = ""
+    status: str = "active"  # active, completed, failed
+
+
+class StateChangeEvent(BaseModel):
+    turn: int = 0
+    description: str
+    changes: list[str] = Field(default_factory=list)  # ["主角体力-20", "获得灵石×5"]
+    timestamp: str = ""
+
+
+class RPGStateData(BaseModel):
+    """Full RPG state - stored in state.json, shown in frontend panel."""
+    characters: list[RPGCharacter] = Field(default_factory=list)
+    inventory: list[InventoryItem] = Field(default_factory=list)
+    scene: SceneState = Field(default_factory=SceneState)
+    explored_locations: list[MapLocation] = Field(default_factory=list)
+    region_connections: dict[str, list[str]] = Field(default_factory=dict)  # {"青云镇": ["翠竹林", "矿山"]}
+    quests: list[QuestInfo] = Field(default_factory=list)
+    event_log: list[StateChangeEvent] = Field(default_factory=list)
+    version: int = 0
+    turn_count: int = 0
+
+
+class RPGStateSummary(BaseModel):
+    """Compact summary for prompt injection - always injected, <=500 tokens."""
+    protagonist_summary: str = ""  # One-line: "主角林风，体力70%，右臂受伤，行动受限"
+    scene_summary: str = ""        # "荒废古寺·后殿，深夜暴雨，阴森压抑"
+    active_quest: str = ""         # "主线：寻找失落的灵石，正在调查古寺线索"
+    key_inventory: str = ""        # "携带破军剑、疗伤丹×2、藏宝图残片"
+    recent_events: str = ""        # "刚击退黑衣人偷袭，发现暗门机关"
+    nearby_npcs: str = ""          # "神秘老者（友好），在殿中打坐"
+
+
+class RPGStateDelta(BaseModel):
+    """Changes extracted from a single AI response."""
+    character_updates: list[dict[str, Any]] = Field(default_factory=list)
+    inventory_changes: list[dict[str, Any]] = Field(default_factory=list)  # {action: "add"|"remove"|"use", item: ...}
+    scene_changes: dict[str, Any] = Field(default_factory=dict)
+    quest_updates: list[dict[str, Any]] = Field(default_factory=list)
+    new_events: list[StateChangeEvent] = Field(default_factory=list)
+
+
 class StateData(BaseModel):
     characters: list[CharacterInfo] = Field(default_factory=list)
     events: list[EventInfo] = Field(default_factory=list)
     world_state: WorldState = Field(default_factory=WorldState)
     version: int = 0
+    # RPG extensions
+    rpg: RPGStateData = Field(default_factory=RPGStateData)
+    rpg_summary: RPGStateSummary = Field(default_factory=RPGStateSummary)
 
 
 # --- Story schemas ---
