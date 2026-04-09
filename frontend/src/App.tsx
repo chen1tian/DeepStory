@@ -13,6 +13,7 @@ import ProtagonistManager from "./components/ProtagonistManager";
 import PresetManager from "./components/PresetManager";
 import PresetSwitcher from "./components/PresetSwitcher";
 import DebugPanel from "./components/DebugPanel";
+import HistoryPanel from "./components/HistoryPanel";
 import "./styles/global.css";
 
 function Toasts() {
@@ -48,10 +49,22 @@ export default function App() {
   const [showProtagonistManager, setShowProtagonistManager] = useState(false);
   const [showPresetManager, setShowPresetManager] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+
+  const sessions = useSessionStore((s) => s.sessions);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // Auto-connect to restored session after sessions are loaded
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (!restored && sessions.length > 0 && currentSessionId) {
+      connectToSession(currentSessionId);
+      setRestored(true);
+    }
+  }, [sessions, currentSessionId, restored, connectToSession]);
 
   const handleNewSession = () => setShowStorySelector(true);
 
@@ -91,6 +104,9 @@ export default function App() {
           onClose={() => setShowDebugPanel(false)}
         />
       )}
+      {showHistoryPanel && (
+        <HistoryPanel onClose={() => setShowHistoryPanel(false)} />
+      )}
       {showStorySelector && (
         <StorySelector
           onSelect={handleStorySelect}
@@ -103,6 +119,7 @@ export default function App() {
       <nav className="top-nav">
         <SessionList
           onNewSession={handleNewSession}
+          onShowHistory={() => setShowHistoryPanel(true)}
           onManageStories={() => setShowStoryManager(true)}
           onManageProtagonists={() => setShowProtagonistManager(true)}
           onManagePresets={() => setShowPresetManager(true)}

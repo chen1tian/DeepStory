@@ -6,36 +6,42 @@ interface Props {
   onManageStories: () => void;
   onManageProtagonists: () => void;
   onManagePresets: () => void;
+  onShowHistory: () => void;
 }
 
-export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManagePresets }: Props) {
+export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManagePresets, onShowHistory }: Props) {
   const sessions = useSessionStore((s) => s.sessions);
+  const openSessionIds = useSessionStore((s) => s.openSessionIds);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const selectSession = useSessionStore((s) => s.selectSession);
-  const removeSession = useSessionStore((s) => s.removeSession);
+  const closeTab = useSessionStore((s) => s.closeTab);
   const connectToSession = useChatStore((s) => s.connectToSession);
+
+  const openSessions = openSessionIds
+    .map((id) => sessions.find((s) => s.id === id))
+    .filter(Boolean) as typeof sessions;
 
   const handleSelect = (id: string) => {
     selectSession(id);
     connectToSession(id);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleClose = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await removeSession(id);
+    closeTab(id);
   };
 
   return (
     <>
       <div className="nav-sessions">
-        {sessions.map((s) => (
+        {openSessions.map((s) => (
           <div
             key={s.id}
             className={`nav-session-item ${s.id === currentSessionId ? "active" : ""}`}
             onClick={() => handleSelect(s.id)}
           >
             <span className="title">{s.title}</span>
-            <button className="delete-btn" onClick={(e) => handleDelete(e, s.id)}>
+            <button className="delete-btn" onClick={(e) => handleClose(e, s.id)}>
               ✕
             </button>
           </div>
@@ -45,6 +51,9 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
         </button>
       </div>
       <div className="nav-actions">
+        <button className="btn-ghost btn nav-action-btn" onClick={onShowHistory}>
+          📜 历史
+        </button>
         <button className="btn-ghost btn nav-action-btn" onClick={onManageStories}>
           📚 故事
         </button>
