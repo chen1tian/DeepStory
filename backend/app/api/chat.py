@@ -133,6 +133,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
             summary=summary,
             recent_messages=branch_msgs[:-1],  # exclude the user msg we just added
             user_input=msg_in.content,
+            characters=[c.model_dump() for c in session.characters] if session and session.characters else [],
         )
 
         # Send token budget info

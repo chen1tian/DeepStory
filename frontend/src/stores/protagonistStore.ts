@@ -5,6 +5,7 @@ import {
   createProtagonist,
   updateProtagonist,
   deleteProtagonist,
+  copyProtagonist,
 } from "../services/api";
 
 interface ProtagonistState {
@@ -15,6 +16,7 @@ interface ProtagonistState {
   addProtagonist: (data?: CreateProtagonistRequest) => Promise<Protagonist>;
   editProtagonist: (id: string, data: UpdateProtagonistRequest) => Promise<Protagonist>;
   removeProtagonist: (id: string) => Promise<void>;
+  duplicateProtagonist: (id: string, name: string) => Promise<Protagonist>;
 }
 
 export const useProtagonistStore = create<ProtagonistState>((set) => ({
@@ -48,5 +50,11 @@ export const useProtagonistStore = create<ProtagonistState>((set) => ({
   removeProtagonist: async (id: string) => {
     await deleteProtagonist(id);
     set((s) => ({ protagonists: s.protagonists.filter((p) => p.id !== id) }));
+  },
+
+  duplicateProtagonist: async (id: string, name: string) => {
+    const p = await copyProtagonist(id, name);
+    set((s) => ({ protagonists: [p, ...s.protagonists] }));
+    return p;
   },
 }));

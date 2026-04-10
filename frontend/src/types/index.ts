@@ -10,12 +10,36 @@ export interface Message {
   branch_id: string;
 }
 
+export interface SessionCharacter {
+  id: string;
+  pool_id: string | null;
+  name: string;
+  setting: string;
+  avatar_emoji: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSessionCharacterRequest {
+  pool_id?: string | null;
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+}
+
+export interface UpdateSessionCharacterRequest {
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+}
+
 export interface Session {
   id: string;
   title: string;
   created_at: string;
   updated_at: string;
   preset_id?: string | null;
+  characters: SessionCharacter[];
 }
 
 export interface SummaryData {
@@ -246,6 +270,7 @@ export interface Story {
   preset_characters: CharacterInfo[];
   color: string;
   protagonist_id?: string;
+  cast_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -257,6 +282,7 @@ export interface CreateStoryRequest {
   openers?: StoryOpener[];
   preset_characters?: CharacterInfo[];
   color?: string;
+  cast_ids?: string[];
 }
 
 export interface UpdateStoryRequest {
@@ -267,6 +293,7 @@ export interface UpdateStoryRequest {
   preset_characters?: CharacterInfo[];
   color?: string;
   protagonist_id?: string;
+  cast_ids?: string[];
 }
 
 // --- Protagonist ---

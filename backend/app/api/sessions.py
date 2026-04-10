@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta, Message, UpdateSystemPromptRequest
+from app.models.schemas import CreateSessionRequest, SessionResponse, SessionMeta, Message, UpdateSystemPromptRequest, SessionCharacter
 from app.storage.file_storage import (
     generate_id,
     write_json,
@@ -84,6 +85,24 @@ async def create_session(req: CreateSessionRequest):
     if title == "新的对话" and story_title:
         title = story_title
 
+    # Load cast from story into session characters
+    initial_characters: list[SessionCharacter] = []
+    if req.story_id:
+        cast_story = await load_story(req.story_id)
+        cast_ids = (cast_story or {}).get("cast_ids", [])
+        for cid in cast_ids:
+            pdata = await load_protagonist(cid)
+            if pdata:
+                initial_characters.append(SessionCharacter(
+                    id=str(uuid.uuid4()),
+                    pool_id=cid,
+                    name=pdata.get("name", "未命名角色"),
+                    setting=pdata.get("setting", ""),
+                    avatar_emoji=pdata.get("avatar_emoji", "🧑"),
+                    created_at=now,
+                    updated_at=now,
+                ))
+
     session = SessionMeta(
         id=session_id,
         title=title,
@@ -92,6 +111,7 @@ async def create_session(req: CreateSessionRequest):
         system_prompt=system_prompt,
         active_branch=[],
         preset_id=active_preset_id,
+        characters=initial_characters,
     )
     await write_json(session_id, "session.json", session.model_dump())
 
@@ -118,6 +138,7 @@ async def create_session(req: CreateSessionRequest):
         created_at=session.created_at,
         updated_at=session.updated_at,
         preset_id=session.preset_id,
+        characters=session.characters,
     )
 
 
@@ -131,6 +152,7 @@ async def get_sessions():
             created_at=s.get("created_at", ""),
             updated_at=s.get("updated_at", ""),
             preset_id=s.get("preset_id"),
+            characters=s.get("characters", []),
         )
         for s in sessions
     ]
@@ -147,6 +169,7 @@ async def get_session(session_id: str):
         created_at=data.get("created_at", ""),
         updated_at=data.get("updated_at", ""),
         preset_id=data.get("preset_id"),
+        characters=data.get("characters", []),
     )
 
 

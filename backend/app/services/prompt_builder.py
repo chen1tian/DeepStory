@@ -28,6 +28,7 @@ async def build_chat_messages(
     summary: SummaryData | None,
     recent_messages: list[Message],
     user_input: str,
+    characters: list | None = None,
 ) -> tuple[list[dict], dict]:
     """Build the OpenAI messages array with token budget management.
     
@@ -39,6 +40,19 @@ async def build_chat_messages(
     # 1. System prompt
     if not system_prompt:
         system_prompt = await _load_template("system.txt")
+
+    # Append session characters (if any) to system prompt
+    if characters:
+        char_parts = []
+        for c in characters:
+            name = c.get("name", "") if isinstance(c, dict) else getattr(c, "name", "")
+            setting = c.get("setting", "") if isinstance(c, dict) else getattr(c, "setting", "")
+            if name and setting:
+                char_parts.append(f"- {name}: {setting}")
+        if char_parts:
+            cast_header = "【演员表】以下角色是故事中的固定角色，请在合适的时机安排他们出场并保持其人设一致：\n"
+            system_prompt = system_prompt + "\n\n" + cast_header + "\n".join(char_parts)
+
     sys_tokens = count_tokens(system_prompt) + 4
 
     # 2. State / background — use RPG summary (compact) for prompt injection

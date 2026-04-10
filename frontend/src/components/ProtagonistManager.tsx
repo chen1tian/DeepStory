@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { useProtagonistStore } from "../stores/protagonistStore";
+import { useSessionStore } from "../stores/sessionStore";
+import { useUIStore } from "../stores/uiStore";
 import AIAssistModal from "./AIAssistModal";
 import type { Protagonist } from "../types";
 
 const EMOJI_OPTIONS = ["🧑", "👩", "👨", "🧙", "🦸", "🧝", "🧛", "🥷", "👸", "🤴", "🧚", "🦹", "👼", "🐉", "🐺", "🦊"];
 
 export default function ProtagonistManager({ onClose }: { onClose: () => void }) {
-  const { protagonists, loading, fetchProtagonists, addProtagonist, editProtagonist, removeProtagonist } =
+  const { protagonists, loading, fetchProtagonists, addProtagonist, editProtagonist, removeProtagonist, duplicateProtagonist } =
     useProtagonistStore();
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const addCharacterToSession = useSessionStore((s) => s.addCharacterToSession);
+  const addToast = useUIStore((s) => s.addToast);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copyTarget, setCopyTarget] = useState<Protagonist | null>(null);
+  const [copyName, setCopyName] = useState("");
 
   useEffect(() => {
     fetchProtagonists();
@@ -25,15 +32,33 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
     if (editingId === id) setEditingId(null);
   };
 
+  const handleStartCopy = (p: Protagonist) => {
+    setCopyName(p.name + " (副本)");
+    setCopyTarget(p);
+  };
+
+  const handleConfirmCopy = async () => {
+    if (!copyTarget || !copyName.trim()) return;
+    await duplicateProtagonist(copyTarget.id, copyName.trim());
+    setCopyTarget(null);
+    setCopyName("");
+  };
+
+  const handleAddToSession = async (p: Protagonist) => {
+    if (!currentSessionId) return;
+    await addCharacterToSession(currentSessionId, { pool_id: p.id });
+    addToast(`「${p.name}」已加入当前对话`, "success");
+  };
+
   const editingProtagonist = protagonists.find((p) => p.id === editingId);
 
   return (
     <div className="story-manager-overlay" onClick={onClose}>
       <div className="story-manager" onClick={(e) => e.stopPropagation()}>
         <div className="story-manager-header">
-          <h2>🎭 主角管理</h2>
+          <h2>🎭 角色池</h2>
           <button className="btn" onClick={handleAdd}>
-            + 新建主角
+            + 新建角色
           </button>
           <div className="spacer" />
           <button className="btn-ghost btn" onClick={onClose}>
@@ -45,7 +70,7 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
           <div className="story-list-panel">
             {loading && <div className="story-loading">加载中…</div>}
             {!loading && protagonists.length === 0 && (
-              <div className="story-loading">暂无主角，点击上方按钮创建</div>
+              <div className="story-loading">暂无角色，点击上方按钮创建</div>
             )}
             {protagonists.map((p) => (
               <div
@@ -55,21 +80,36 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
               >
                 <div className="protagonist-card-header">
                   <span className="protagonist-avatar">{p.avatar_emoji}</span>
-                  <span className="story-card-title">{p.name || "未命名主角"}</span>
-                  {p.is_default && <span className="protagonist-default-badge">默认</span>}
+                  <span className="story-card-title">{p.name || "未命名角色"}</span>
+                  {p.is_default && <span className="protagonist-default-badge">默认主角</span>}
                 </div>
                 <div className="story-card-desc">
                   {p.setting ? (p.setting.length > 60 ? p.setting.slice(0, 60) + "…" : p.setting) : "暂无设定"}
                 </div>
-                <button
-                  className="story-card-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(p.id);
-                  }}
-                >
-                  🗑
-                </button>
+                <div className="protagonist-card-btns" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="btn-small"
+                    title="复制角色"
+                    onClick={() => handleStartCopy(p)}
+                  >
+                    📋
+                  </button>
+                  {currentSessionId && (
+                    <button
+                      className="btn-small"
+                      title="加入当前对话"
+                      onClick={() => handleAddToSession(p)}
+                    >
+                      💬 加入对话
+                    </button>
+                  )}
+                  <button
+                    className="story-card-delete"
+                    onClick={() => handleDelete(p.id)}
+                  >
+                    🗑
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -85,12 +125,37 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
             ) : (
               <div className="empty-state">
                 <div className="icon">🎭</div>
-                <div>选择或新建一个主角来编辑</div>
+                <div>选择或新建一个角色来编辑</div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Copy dialog */}
+      {copyTarget && (
+        <div className="char-copy-overlay" onClick={() => setCopyTarget(null)}>
+          <div className="char-copy-dialog" onClick={(e) => e.stopPropagation()}>
+            <h4>复制角色</h4>
+            <p>为复制的角色命名：</p>
+            <input
+              autoFocus
+              value={copyName}
+              onChange={(e) => setCopyName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleConfirmCopy()}
+              placeholder="角色名称"
+            />
+            <div className="char-copy-actions">
+              <button className="btn" onClick={handleConfirmCopy} disabled={!copyName.trim()}>
+                确认复制
+              </button>
+              <button className="btn-ghost btn" onClick={() => setCopyTarget(null)}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

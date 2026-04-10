@@ -1,6 +1,10 @@
 import { create } from "zustand";
-import type { Session } from "../types";
-import { getSessions, createSession, deleteSession } from "../services/api";
+import type { Session, SessionCharacter, CreateSessionCharacterRequest, UpdateSessionCharacterRequest } from "../types";
+import { getSessions, createSession, deleteSession,
+  getSessionCharacters, createSessionCharacter, updateSessionCharacter,
+  deleteSessionCharacter, copySessionCharacter,
+  pushCharacterToPool, pullCharacterFromPool,
+} from "../services/api";
 
 interface SessionState {
   sessions: Session[];        // all sessions from backend
@@ -15,6 +19,15 @@ interface SessionState {
   openTab: (id: string) => void;                  // reopen from history
   selectSession: (id: string) => void;
   updateSessionPreset: (id: string, presetId: string) => void;
+
+  // Session character management
+  fetchSessionCharacters: (sessionId: string) => Promise<SessionCharacter[]>;
+  addCharacterToSession: (sessionId: string, data: CreateSessionCharacterRequest) => Promise<SessionCharacter>;
+  updateCharacterInSession: (sessionId: string, charId: string, data: UpdateSessionCharacterRequest) => Promise<SessionCharacter>;
+  removeCharacterFromSession: (sessionId: string, charId: string) => Promise<void>;
+  copyCharacterInSession: (sessionId: string, charId: string, name: string) => Promise<SessionCharacter>;
+  pushCharacterToPool: (sessionId: string, charId: string) => Promise<void>;
+  pullCharacterFromPool: (sessionId: string, charId: string) => Promise<void>;
 }
 
 const LAST_SESSION_KEY = "lastSessionId";
@@ -120,6 +133,87 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((s) => ({
       sessions: s.sessions.map((sess) =>
         sess.id === id ? { ...sess, preset_id: presetId } : sess
+      ),
+    }));
+  },
+
+  fetchSessionCharacters: async (sessionId: string) => {
+    const chars = await getSessionCharacters(sessionId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, characters: chars } : sess
+      ),
+    }));
+    return chars;
+  },
+
+  addCharacterToSession: async (sessionId: string, data: CreateSessionCharacterRequest) => {
+    const char = await createSessionCharacter(sessionId, data);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, characters: [...(sess.characters || []), char] } : sess
+      ),
+    }));
+    return char;
+  },
+
+  updateCharacterInSession: async (sessionId: string, charId: string, data: UpdateSessionCharacterRequest) => {
+    const updated = await updateSessionCharacter(sessionId, charId, data);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? { ...sess, characters: (sess.characters || []).map((c) => c.id === charId ? updated : c) }
+          : sess
+      ),
+    }));
+    return updated;
+  },
+
+  removeCharacterFromSession: async (sessionId: string, charId: string) => {
+    await deleteSessionCharacter(sessionId, charId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? { ...sess, characters: (sess.characters || []).filter((c) => c.id !== charId) }
+          : sess
+      ),
+    }));
+  },
+
+  copyCharacterInSession: async (sessionId: string, charId: string, name: string) => {
+    const char = await copySessionCharacter(sessionId, charId, name);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, characters: [...(sess.characters || []), char] } : sess
+      ),
+    }));
+    return char;
+  },
+
+  pushCharacterToPool: async (sessionId: string, charId: string) => {
+    const protagonist = await pushCharacterToPool(sessionId, charId);
+    // Back-link pool_id into local state
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? {
+              ...sess,
+              characters: (sess.characters || []).map((c) =>
+                c.id === charId ? { ...c, pool_id: protagonist.id } : c
+              ),
+            }
+          : sess
+      ),
+    }));
+  },
+
+  pullCharacterFromPool: async (sessionId: string, charId: string) => {
+    const updated = await pullCharacterFromPool(sessionId, charId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? { ...sess, characters: (sess.characters || []).map((c) => c.id === charId ? updated : c) }
+          : sess
       ),
     }));
   },

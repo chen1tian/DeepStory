@@ -13,6 +13,10 @@ import type {
   Preset,
   CreatePresetRequest,
   UpdatePresetRequest,
+  SessionCharacter,
+  CreateSessionCharacterRequest,
+  UpdateSessionCharacterRequest,
+  RPGCharacter,
 } from "../types";
 
 const BASE = "/api";
@@ -129,6 +133,53 @@ export const updateProtagonist = (id: string, data: UpdateProtagonistRequest) =>
 
 export const deleteProtagonist = (id: string) =>
   request<{ status: string }>(`/protagonists/${id}`, { method: "DELETE" });
+
+export const copyProtagonist = (id: string, name: string) =>
+  request<Protagonist>(`/protagonists/${id}/copy`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+
+export const createProtagonistFromRPG = (char: RPGCharacter) =>
+  request<Protagonist>(`/protagonists/from-rpg-character`, {
+    method: "POST",
+    body: JSON.stringify(char),
+  });
+
+// Session Characters
+export const getSessionCharacters = (sessionId: string) =>
+  request<SessionCharacter[]>(`/sessions/${sessionId}/characters`);
+
+export const createSessionCharacter = (sessionId: string, data: CreateSessionCharacterRequest) =>
+  request<SessionCharacter>(`/sessions/${sessionId}/characters`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateSessionCharacter = (sessionId: string, charId: string, data: UpdateSessionCharacterRequest) =>
+  request<SessionCharacter>(`/sessions/${sessionId}/characters/${charId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteSessionCharacter = (sessionId: string, charId: string) =>
+  request<{ status: string }>(`/sessions/${sessionId}/characters/${charId}`, { method: "DELETE" });
+
+export const copySessionCharacter = (sessionId: string, charId: string, name: string) =>
+  request<SessionCharacter>(`/sessions/${sessionId}/characters/${charId}/copy`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+
+export const pushCharacterToPool = (sessionId: string, charId: string) =>
+  request<Protagonist>(`/sessions/${sessionId}/characters/${charId}/push-to-pool`, {
+    method: "POST",
+  });
+
+export const pullCharacterFromPool = (sessionId: string, charId: string) =>
+  request<SessionCharacter>(`/sessions/${sessionId}/characters/${charId}/pull-from-pool`, {
+    method: "POST",
+  });
 
 // Presets
 export const getPresets = () => request<Preset[]>("/presets");

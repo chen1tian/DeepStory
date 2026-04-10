@@ -60,7 +60,7 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
                   {s.description || "暂无描述"}
                 </div>
                 <div className="story-card-meta">
-                  {s.openers.length} 条开场白 · {s.preset_characters.length} 个角色
+                  {s.openers.length} 条开场白 · {s.preset_characters.length} 个预设角色{s.cast_ids?.length ? ` · ${s.cast_ids.length} 演员` : ""}
                 </div>
                 <button
                   className="story-card-delete"
@@ -107,6 +107,7 @@ interface FormData {
   preset_characters: CharacterInfo[];
   color: string;
   protagonist_id: string;
+  cast_ids: string[];
 }
 
 function StoryForm({
@@ -126,6 +127,7 @@ function StoryForm({
     preset_characters: story.preset_characters,
     color: story.color || "#6366f1",
     protagonist_id: story.protagonist_id || "",
+    cast_ids: story.cast_ids || [],
   });
   const [saving, setSaving] = useState(false);
   const [aiAssist, setAiAssist] = useState<{
@@ -241,6 +243,39 @@ function StoryForm({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="story-form-section">
+        <div className="story-form-section-header">
+          <label>🎭 演员表 ({form.cast_ids.length})</label>
+          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>开始对话时自动加入这些角色</span>
+        </div>
+        {protagonists.length === 0 && (
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", padding: "8px 0" }}>
+            角色池为空，请先在角色池中创建角色
+          </div>
+        )}
+        <div className="cast-selection-grid">
+          {protagonists.map((p) => {
+            const checked = form.cast_ids.includes(p.id);
+            return (
+              <label key={p.id} className={`cast-selection-item ${checked ? "selected" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => {
+                    const newIds = checked
+                      ? form.cast_ids.filter((id) => id !== p.id)
+                      : [...form.cast_ids, p.id];
+                    update("cast_ids", newIds);
+                  }}
+                />
+                <span className="cast-avatar">{p.avatar_emoji}</span>
+                <span className="cast-name">{p.name}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       <div className="story-form-row">

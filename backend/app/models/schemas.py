@@ -24,6 +24,7 @@ class SessionMeta(BaseModel):
     system_prompt: str = ""
     active_branch: list[str] = Field(default_factory=lambda: [])  # ordered message ids
     preset_id: str | None = None
+    characters: list[SessionCharacter] = Field(default_factory=list)
 
 
 class SummaryData(BaseModel):
@@ -223,6 +224,7 @@ class Story(BaseModel):
     preset_characters: list[CharacterInfo] = Field(default_factory=list)
     color: str = "#6366f1"  # tag / card accent color
     protagonist_id: str | None = None  # bound protagonist
+    cast_ids: list[str] = Field(default_factory=list)  # IDs of protagonists in the cast
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -234,6 +236,7 @@ class CreateStoryRequest(BaseModel):
     openers: list[StoryOpener] = Field(default_factory=list)
     preset_characters: list[CharacterInfo] = Field(default_factory=list)
     color: str = "#6366f1"
+    cast_ids: list[str] = Field(default_factory=list)
 
 
 class UpdateStoryRequest(BaseModel):
@@ -244,6 +247,7 @@ class UpdateStoryRequest(BaseModel):
     preset_characters: list[CharacterInfo] | None = None
     color: str | None = None
     protagonist_id: str | None = None
+    cast_ids: list[str] | None = None
 
 
 # --- Protagonist schemas ---
@@ -257,6 +261,32 @@ class Protagonist(BaseModel):
     is_default: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+# --- Session Character schemas (per-session copies, isolated from protagonist pool) ---
+
+
+class SessionCharacter(BaseModel):
+    id: str
+    pool_id: str | None = None  # reference to source Protagonist, None if created ad-hoc
+    name: str = "未命名角色"
+    setting: str = ""
+    avatar_emoji: str = "🧑"
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateSessionCharacterRequest(BaseModel):
+    pool_id: str | None = None  # if provided, copy from protagonist pool
+    name: str = "未命名角色"
+    setting: str = ""
+    avatar_emoji: str = "🧑"
+
+
+class UpdateSessionCharacterRequest(BaseModel):
+    name: str | None = None
+    setting: str | None = None
+    avatar_emoji: str | None = None
 
 
 class CreateProtagonistRequest(BaseModel):
@@ -322,6 +352,7 @@ class SessionResponse(BaseModel):
     created_at: str
     updated_at: str
     preset_id: str | None = None
+    characters: list[SessionCharacter] = Field(default_factory=list)
 
 
 class MessagesResponse(BaseModel):

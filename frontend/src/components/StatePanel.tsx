@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useChatStore } from "../stores/chatStore";
+import { createProtagonistFromRPG } from "../services/api";
+import { useProtagonistStore } from "../stores/protagonistStore";
 import type { StateData, RPGCharacter } from "../types";
 
 function HealthBar({ current, max, color = "#22c55e" }: { current: number; max: number; color?: string }) {
@@ -15,7 +17,7 @@ function HealthBar({ current, max, color = "#22c55e" }: { current: number; max: 
   );
 }
 
-function CharacterCard({ char }: { char: RPGCharacter }) {
+function CharacterCard({ char, onSaveToPool }: { char: RPGCharacter; onSaveToPool?: (char: RPGCharacter) => void }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="state-card" style={{ cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
@@ -23,7 +25,19 @@ function CharacterCard({ char }: { char: RPGCharacter }) {
         <span style={{ fontWeight: 600 }}>
           {char.is_protagonist ? "⭐ " : ""}{char.name}
         </span>
-        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{expanded ? "▲" : "▼"}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {onSaveToPool && (
+            <button
+              className="btn-small"
+              style={{ fontSize: 11, padding: "1px 6px" }}
+              title="保存到角色池"
+              onClick={(e) => { e.stopPropagation(); onSaveToPool(char); }}
+            >
+              💾 入池
+            </button>
+          )}
+          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{expanded ? "▲" : "▼"}</span>
+        </span>
       </div>
       {char.description && <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{char.description}</div>}
 
@@ -105,7 +119,22 @@ function CharacterCard({ char }: { char: RPGCharacter }) {
 
 export default function StatePanel() {
   const stateData = useChatStore((s) => s.stateData);
+  const fetchProtagonists = useProtagonistStore((s) => s.fetchProtagonists);
   const [activeTab, setActiveTab] = useState<"chars" | "inv" | "scene" | "quest" | "log">("chars");
+  const [savingName, setSavingName] = useState<string | null>(null);
+
+  const handleSaveToPool = async (char: RPGCharacter) => {
+    setSavingName(char.name);
+    try {
+      await createProtagonistFromRPG(char);
+      await fetchProtagonists();
+      alert(`角色 "${char.name}" 已保存到角色池`);
+    } catch (e) {
+      alert("保存失败: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSavingName(null);
+    }
+  };
 
   if (!stateData) {
     return (
@@ -158,8 +187,8 @@ export default function StatePanel() {
         <div className="state-section">
           {rpg.characters.length === 0 && <div className="state-card">暂无角色信息</div>}
           {/* Protagonist first */}
-          {rpg.characters.filter(c => c.is_protagonist).map((c, i) => <CharacterCard key={`p${i}`} char={c} />)}
-          {rpg.characters.filter(c => !c.is_protagonist).map((c, i) => <CharacterCard key={`n${i}`} char={c} />)}
+          {rpg.characters.filter(c => c.is_protagonist).map((c, i) => <CharacterCard key={`p${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
+          {rpg.characters.filter(c => !c.is_protagonist).map((c, i) => <CharacterCard key={`n${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
         </div>
       )}
 

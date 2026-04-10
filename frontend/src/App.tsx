@@ -4,8 +4,6 @@ import { useUIStore } from "./stores/uiStore";
 import { useChatStore } from "./stores/chatStore";
 import { usePresetStore } from "./stores/presetStore";
 import SessionList from "./components/SessionList";
-import ChatView from "./components/ChatView";
-import EditMode from "./components/EditMode";
 import StatePanel from "./components/StatePanel";
 import StoryManager from "./components/StoryManager";
 import StorySelector from "./components/StorySelector";
@@ -38,12 +36,6 @@ export default function App() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const editMode = useUIStore((s) => s.editMode);
   const statePanelOpen = useUIStore((s) => s.statePanelOpen);
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
-  const toggleEditMode = useUIStore((s) => s.toggleEditMode);
-  const toggleStatePanel = useUIStore((s) => s.toggleStatePanel);
-
-  const currentSessionId = useSessionStore((s) => s.currentSessionId);
-
   const [showStoryManager, setShowStoryManager] = useState(false);
   const [showStorySelector, setShowStorySelector] = useState(false);
   const [showProtagonistManager, setShowProtagonistManager] = useState(false);
@@ -129,10 +121,16 @@ export default function App() {
       {/* Main */}
       <div className="main-content">
         <div className="top-bar">
-          <button className={editMode ? "" : "active"} onClick={() => editMode && toggleEditMode()}>
+          <button
+            className={!editMode ? "active" : ""}
+            onClick={() => { if (editMode) toggleEditMode(); }}
+          >
             💬 聊天
           </button>
-          <button className={editMode ? "active" : ""} onClick={() => !editMode && toggleEditMode()}>
+          <button
+            className={editMode ? "active" : ""}
+            onClick={() => { if (!editMode) toggleEditMode(); }}
+          >
             🎨 编辑
           </button>
           <div className="spacer" />
@@ -154,7 +152,11 @@ export default function App() {
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-            {editMode ? <EditMode /> : <ChatView />}
+            {editMode ? (
+              <EditMode />
+            ) : (
+              <ChatView />
+            )}
           </div>
 
           {statePanelOpen && (
