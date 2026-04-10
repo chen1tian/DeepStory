@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { useStoryStore } from "../stores/storyStore";
 import { useProtagonistStore } from "../stores/protagonistStore";
+import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import AIAssistModal from "./AIAssistModal";
-import type { Story, StoryOpener, CharacterInfo, Protagonist } from "../types";
+import type { Story, StoryOpener, CharacterInfo, Protagonist, UserProtagonist } from "../types";
 
 export default function StoryManager({ onClose }: { onClose: () => void }) {
   const { stories, loading, fetchStories, addStory, editStory, removeStory } =
     useStoryStore();
   const { protagonists, fetchProtagonists } = useProtagonistStore();
+  const { userProtagonists, fetchUserProtagonists } = useUserProtagonistStore();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStories();
     fetchProtagonists();
-  }, [fetchStories, fetchProtagonists]);
+    fetchUserProtagonists();
+  }, [fetchStories, fetchProtagonists, fetchUserProtagonists]);
 
   const handleAdd = async () => {
     const story = await addStory();
@@ -83,6 +86,7 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
                 story={editingStory}
                 onSave={(data) => editStory(editingStory.id, data)}
                 protagonists={protagonists}
+                userProtagonists={userProtagonists}
               />
             ) : (
               <div className="empty-state">
@@ -114,10 +118,12 @@ function StoryForm({
   story,
   onSave,
   protagonists,
+  userProtagonists,
 }: {
   story: Story;
   onSave: (data: Partial<FormData>) => Promise<unknown>;
   protagonists: Protagonist[];
+  userProtagonists: UserProtagonist[];
 }) {
   const [form, setForm] = useState<FormData>({
     title: story.title,
@@ -237,7 +243,7 @@ function StoryForm({
           className="protagonist-select"
         >
           <option value="">不绑定（使用默认主角）</option>
-          {protagonists.map((p) => (
+          {userProtagonists.map((p) => (
             <option key={p.id} value={p.id}>
               {p.avatar_emoji} {p.name}{p.is_default ? " (默认)" : ""}
             </option>

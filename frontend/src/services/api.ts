@@ -10,6 +10,9 @@ import type {
   Protagonist,
   CreateProtagonistRequest,
   UpdateProtagonistRequest,
+  UserProtagonist,
+  CreateUserProtagonistRequest,
+  UpdateUserProtagonistRequest,
   Preset,
   CreatePresetRequest,
   UpdatePresetRequest,
@@ -179,6 +182,37 @@ export const pushCharacterToPool = (sessionId: string, charId: string) =>
 export const pullCharacterFromPool = (sessionId: string, charId: string) =>
   request<SessionCharacter>(`/sessions/${sessionId}/characters/${charId}/pull-from-pool`, {
     method: "POST",
+  });
+
+// Set session protagonist
+export const setSessionProtagonist = (sessionId: string, userProtagonistId: string | null) =>
+  request<{ status: string; user_protagonist_id: string | null }>(
+    `/sessions/${sessionId}/protagonist`,
+    { method: "PUT", body: JSON.stringify({ user_protagonist_id: userProtagonistId }) }
+  );
+
+// User Protagonists
+export const getUserProtagonists = () => request<UserProtagonist[]>("/user-protagonists");
+
+export const createUserProtagonist = (data: CreateUserProtagonistRequest = {}) =>
+  request<UserProtagonist>("/user-protagonists", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateUserProtagonist = (id: string, data: UpdateUserProtagonistRequest) =>
+  request<UserProtagonist>(`/user-protagonists/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteUserProtagonist = (id: string) =>
+  request<{ status: string }>(`/user-protagonists/${id}`, { method: "DELETE" });
+
+export const copyUserProtagonist = (id: string, name: string) =>
+  request<UserProtagonist>(`/user-protagonists/${id}/copy`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
   });
 
 // Presets

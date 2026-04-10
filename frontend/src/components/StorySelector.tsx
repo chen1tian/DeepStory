@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStoryStore } from "../stores/storyStore";
-import { useProtagonistStore } from "../stores/protagonistStore";
+import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import { usePresetStore } from "../stores/presetStore";
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
 
 export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
   const { stories, loading, fetchStories } = useStoryStore();
-  const { protagonists, fetchProtagonists } = useProtagonistStore();
+  const { userProtagonists, fetchUserProtagonists } = useUserProtagonistStore();
   const { presets, fetchPresets } = usePresetStore();
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [selectedOpener, setSelectedOpener] = useState(0);
@@ -19,13 +19,13 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
 
   useEffect(() => {
     fetchStories();
-    fetchProtagonists();
+    fetchUserProtagonists();
     fetchPresets();
-  }, [fetchStories, fetchProtagonists, fetchPresets]);
+  }, [fetchStories, fetchUserProtagonists, fetchPresets]);
 
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
   const boundProtagonist = selectedStory?.protagonist_id
-    ? protagonists.find((p) => p.id === selectedStory.protagonist_id)
+    ? userProtagonists.find((p) => p.id === selectedStory.protagonist_id)
     : null;
 
   return (
@@ -107,8 +107,8 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
                   </div>
                   <div className="story-select-card-meta">
                     {s.openers.length} 条开场白
-                    {s.protagonist_id && protagonists.find((p) => p.id === s.protagonist_id) && (
-                      <> · {protagonists.find((p) => p.id === s.protagonist_id)!.avatar_emoji} {protagonists.find((p) => p.id === s.protagonist_id)!.name}</>
+                    {s.protagonist_id && userProtagonists.find((p) => p.id === s.protagonist_id) && (
+                      <> · {userProtagonists.find((p) => p.id === s.protagonist_id)!.avatar_emoji} {userProtagonists.find((p) => p.id === s.protagonist_id)!.name}</>
                     )}
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { getSessions, createSession, deleteSession,
   getSessionCharacters, createSessionCharacter, updateSessionCharacter,
   deleteSessionCharacter, copySessionCharacter,
   pushCharacterToPool, pullCharacterFromPool,
+  setSessionProtagonist,
 } from "../services/api";
 
 interface SessionState {
@@ -28,6 +29,9 @@ interface SessionState {
   copyCharacterInSession: (sessionId: string, charId: string, name: string) => Promise<SessionCharacter>;
   pushCharacterToPool: (sessionId: string, charId: string) => Promise<void>;
   pullCharacterFromPool: (sessionId: string, charId: string) => Promise<void>;
+
+  // User protagonist management
+  setSessionProtagonist: (sessionId: string, userProtagonistId: string | null) => Promise<void>;
 }
 
 const LAST_SESSION_KEY = "lastSessionId";
@@ -214,6 +218,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         sess.id === sessionId
           ? { ...sess, characters: (sess.characters || []).map((c) => c.id === charId ? updated : c) }
           : sess
+      ),
+    }));
+  },
+
+  setSessionProtagonist: async (sessionId: string, userProtagonistId: string | null) => {
+    await setSessionProtagonist(sessionId, userProtagonistId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, user_protagonist_id: userProtagonistId } : sess
       ),
     }));
   },

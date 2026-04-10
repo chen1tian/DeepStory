@@ -10,6 +10,7 @@ from app.services.chat_manager import (
     load_state,
 )
 from app.services.prompt_builder import build_chat_messages
+from app.storage.user_protagonist_storage import load_user_protagonist
 
 router = APIRouter(tags=["debug"])
 
@@ -44,12 +45,19 @@ async def debug_prompt(session_id: str, req: DebugPromptRequest):
     summary = await load_summary(session_id)
     state = await load_state(session_id)
 
+    # Load user protagonist for prompt injection
+    user_protagonist = None
+    if session.user_protagonist_id:
+        user_protagonist = await load_user_protagonist(session.user_protagonist_id)
+
     messages, budget_info = await build_chat_messages(
         system_prompt=session.system_prompt,
         state=state,
         summary=summary,
         recent_messages=branch_msgs,
         user_input=req.user_input,
+        characters=[c.model_dump() for c in session.characters] if session.characters else [],
+        user_protagonist=user_protagonist,
     )
 
     debug_messages = []

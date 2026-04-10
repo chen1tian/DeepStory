@@ -40,6 +40,7 @@ export interface Session {
   updated_at: string;
   preset_id?: string | null;
   characters: SessionCharacter[];
+  user_protagonist_id?: string | null;
 }
 
 export interface SummaryData {
@@ -296,7 +297,33 @@ export interface UpdateStoryRequest {
   cast_ids?: string[];
 }
 
-// --- Protagonist ---
+// --- User Protagonist (用户化身) ---
+
+export interface UserProtagonist {
+  id: string;
+  name: string;
+  setting: string;
+  avatar_emoji: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserProtagonistRequest {
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateUserProtagonistRequest {
+  name?: string;
+  setting?: string;
+  avatar_emoji?: string;
+  is_default?: boolean;
+}
+
+// --- Protagonist (角色池，NPC) ---
 
 export interface Protagonist {
   id: string;

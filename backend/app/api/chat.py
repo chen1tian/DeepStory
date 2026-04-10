@@ -21,6 +21,7 @@ from app.services.prompt_builder import build_chat_messages
 from app.services.llm_service import chat_completion_stream
 from app.services.summarizer import should_summarize, incremental_summarize, extract_state
 from app.services.event_bus import event_bus
+from app.storage.user_protagonist_storage import load_user_protagonist
 
 log = structlog.get_logger()
 
@@ -126,6 +127,11 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
         summary = await load_summary(session_id)
         state = await load_state(session_id)
 
+        # Load user protagonist data for prompt injection
+        user_protagonist = None
+        if session and session.user_protagonist_id:
+            user_protagonist = await load_user_protagonist(session.user_protagonist_id)
+
         # Build prompt with token budget
         messages, budget_info = await build_chat_messages(
             system_prompt=session.system_prompt if session else "",
@@ -134,6 +140,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
             recent_messages=branch_msgs[:-1],  # exclude the user msg we just added
             user_input=msg_in.content,
             characters=[c.model_dump() for c in session.characters] if session and session.characters else [],
+            user_protagonist=user_protagonist,
         )
 
         # Send token budget info

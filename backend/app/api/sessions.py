@@ -14,7 +14,8 @@ from app.storage.file_storage import (
     delete_session,
 )
 from app.storage.story_storage import load_story
-from app.storage.protagonist_storage import load_protagonist, list_protagonists
+from app.storage.protagonist_storage import load_protagonist
+from app.storage.user_protagonist_storage import load_user_protagonist, list_user_protagonists
 from app.storage.preset_storage import load_preset, list_presets
 from app.services.chat_manager import create_branch_from
 
@@ -61,25 +62,23 @@ async def create_session(req: CreateSessionRequest):
             idx = max(0, min(req.opener_index, len(openers) - 1)) if openers else -1
             if idx >= 0 and openers:
                 opener_content = openers[idx].get("content", "")
-            # Use story's bound protagonist if no explicit one provided
-            if not req.protagonist_id and story_data.get("protagonist_id"):
-                req.protagonist_id = story_data["protagonist_id"]
+            # Use story's bound user protagonist if none explicitly provided
+            if not req.user_protagonist_id and story_data.get("protagonist_id"):
+                req.user_protagonist_id = story_data["protagonist_id"]
 
-    # Inject protagonist setting into system_prompt
-    protagonist_data = None
-    if req.protagonist_id:
-        protagonist_data = await load_protagonist(req.protagonist_id)
-    if not protagonist_data:
-        # Fallback to default protagonist
-        all_protagonists = await list_protagonists()
-        for p in all_protagonists:
-            if p.get("is_default"):
-                protagonist_data = p
+    # Resolve the user protagonist for this session
+    user_protagonist_id: str | None = None
+    if req.user_protagonist_id:
+        updata = await load_user_protagonist(req.user_protagonist_id)
+        if updata:
+            user_protagonist_id = req.user_protagonist_id
+    if not user_protagonist_id:
+        # Fallback to default user protagonist
+        all_user_protagonists = await list_user_protagonists()
+        for up in all_user_protagonists:
+            if up.get("is_default"):
+                user_protagonist_id = up["id"]
                 break
-    if protagonist_data and protagonist_data.get("setting"):
-        pname = protagonist_data.get("name", "主角")
-        psetting = protagonist_data["setting"]
-        system_prompt = (system_prompt or "") + f"\n\n【主角设定 - {pname}】\n{psetting}"
 
     title = req.title
     if title == "新的对话" and story_title:
@@ -112,6 +111,7 @@ async def create_session(req: CreateSessionRequest):
         active_branch=[],
         preset_id=active_preset_id,
         characters=initial_characters,
+        user_protagonist_id=user_protagonist_id,
     )
     await write_json(session_id, "session.json", session.model_dump())
 
@@ -139,6 +139,7 @@ async def create_session(req: CreateSessionRequest):
         updated_at=session.updated_at,
         preset_id=session.preset_id,
         characters=session.characters,
+        user_protagonist_id=session.user_protagonist_id,
     )
 
 
@@ -153,6 +154,7 @@ async def get_sessions():
             updated_at=s.get("updated_at", ""),
             preset_id=s.get("preset_id"),
             characters=s.get("characters", []),
+            user_protagonist_id=s.get("user_protagonist_id"),
         )
         for s in sessions
     ]
@@ -170,6 +172,7 @@ async def get_session(session_id: str):
         updated_at=data.get("updated_at", ""),
         preset_id=data.get("preset_id"),
         characters=data.get("characters", []),
+        user_protagonist_id=data.get("user_protagonist_id"),
     )
 
 
@@ -191,13 +194,7 @@ async def update_system_prompt(session_id: str, req: UpdateSystemPromptRequest):
         preset_data = await load_preset(req.preset_id)
         if preset_data is None:
             raise HTTPException(status_code=404, detail="Preset not found")
-        # Preserve protagonist setting when switching presets
         new_prompt = preset_data.get("content", "")
-        old_prompt = data.get("system_prompt", "")
-        protagonist_marker = "\n\n【主角设定 - "
-        if protagonist_marker in old_prompt:
-            protagonist_section = old_prompt[old_prompt.index(protagonist_marker):]
-            new_prompt = new_prompt + protagonist_section
         data["system_prompt"] = new_prompt
         data["preset_id"] = req.preset_id
     elif req.system_prompt is not None:
@@ -217,3 +214,20 @@ async def branch_from_message(session_id: str, message_id: str):
         return {"active_branch": new_branch}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/sessions/{session_id}/protagonist")
+async def set_session_protagonist(session_id: str, body: dict):
+    """Switch the user protagonist bound to a session. Body: {"user_protagonist_id": "..."}""" 
+    data = await read_json(session_id, "session.json")
+    if data is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    uid = body.get("user_protagonist_id")
+    if uid is not None:
+        updata = await load_user_protagonist(uid)
+        if updata is None:
+            raise HTTPException(status_code=404, detail="User protagonist not found")
+    data["user_protagonist_id"] = uid
+    data["updated_at"] = datetime.now().isoformat()
+    await write_json(session_id, "session.json", data)
+    return {"status": "updated", "user_protagonist_id": uid}

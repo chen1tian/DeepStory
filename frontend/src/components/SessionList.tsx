@@ -5,11 +5,12 @@ interface Props {
   onNewSession: () => void;
   onManageStories: () => void;
   onManageProtagonists: () => void;
+  onManageUserProtagonists: () => void;
   onManagePresets: () => void;
   onShowHistory: () => void;
 }
 
-export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManagePresets, onShowHistory }: Props) {
+export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManageUserProtagonists, onManagePresets, onShowHistory }: Props) {
   const sessions = useSessionStore((s) => s.sessions);
   const openSessionIds = useSessionStore((s) => s.openSessionIds);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
@@ -58,6 +59,9 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
           📚 故事
         </button>
         <button className="btn-ghost btn nav-action-btn" onClick={onManageProtagonists}>
+          👥 角色
+        </button>
+        <button className="btn-ghost btn nav-action-btn" onClick={onManageUserProtagonists}>
           🎭 主角
         </button>
         <button className="btn-ghost btn nav-action-btn" onClick={onManagePresets}>

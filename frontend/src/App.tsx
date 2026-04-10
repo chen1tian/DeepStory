@@ -10,6 +10,7 @@ import StatePanel from "./components/StatePanel";
 import StoryManager from "./components/StoryManager";
 import StorySelector from "./components/StorySelector";
 import ProtagonistManager from "./components/ProtagonistManager";
+import UserProtagonistManager from "./components/UserProtagonistManager";
 import PresetManager from "./components/PresetManager";
 import PresetSwitcher from "./components/PresetSwitcher";
 import DebugPanel from "./components/DebugPanel";
@@ -47,6 +48,7 @@ export default function App() {
   const [showStoryManager, setShowStoryManager] = useState(false);
   const [showStorySelector, setShowStorySelector] = useState(false);
   const [showProtagonistManager, setShowProtagonistManager] = useState(false);
+  const [showUserProtagonistManager, setShowUserProtagonistManager] = useState(false);
   const [showPresetManager, setShowPresetManager] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
@@ -95,6 +97,9 @@ export default function App() {
       {showProtagonistManager && (
         <ProtagonistManager onClose={() => setShowProtagonistManager(false)} />
       )}
+      {showUserProtagonistManager && (
+        <UserProtagonistManager onClose={() => setShowUserProtagonistManager(false)} />
+      )}
       {showPresetManager && (
         <PresetManager onClose={() => setShowPresetManager(false)} />
       )}
@@ -122,6 +127,7 @@ export default function App() {
           onShowHistory={() => setShowHistoryPanel(true)}
           onManageStories={() => setShowStoryManager(true)}
           onManageProtagonists={() => setShowProtagonistManager(true)}
+          onManageUserProtagonists={() => setShowUserProtagonistManager(true)}
           onManagePresets={() => setShowPresetManager(true)}
         />
       </nav>

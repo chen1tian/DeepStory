@@ -25,6 +25,7 @@ class SessionMeta(BaseModel):
     active_branch: list[str] = Field(default_factory=lambda: [])  # ordered message ids
     preset_id: str | None = None
     characters: list[SessionCharacter] = Field(default_factory=list)
+    user_protagonist_id: str | None = None  # bound user protagonist
 
 
 class SummaryData(BaseModel):
@@ -250,7 +251,34 @@ class UpdateStoryRequest(BaseModel):
     cast_ids: list[str] | None = None
 
 
-# --- Protagonist schemas ---
+# --- User Protagonist schemas (用户化身) ---
+
+
+class UserProtagonist(BaseModel):
+    id: str
+    name: str = "未命名主角"
+    setting: str = ""  # character background / personality / description
+    avatar_emoji: str = "🧑"
+    is_default: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateUserProtagonistRequest(BaseModel):
+    name: str = "未命名主角"
+    setting: str = ""
+    avatar_emoji: str = "🧑"
+    is_default: bool = False
+
+
+class UpdateUserProtagonistRequest(BaseModel):
+    name: str | None = None
+    setting: str | None = None
+    avatar_emoji: str | None = None
+    is_default: bool | None = None
+
+
+# --- NPC Protagonist schemas (角色池，原 Protagonist 系统) ---
 
 
 class Protagonist(BaseModel):
@@ -344,6 +372,7 @@ class CreateSessionRequest(BaseModel):
     story_id: str | None = None
     opener_index: int = 0
     protagonist_id: str | None = None
+    user_protagonist_id: str | None = None  # user protagonist (avatar)
 
 
 class SessionResponse(BaseModel):
@@ -353,6 +382,7 @@ class SessionResponse(BaseModel):
     updated_at: str
     preset_id: str | None = None
     characters: list[SessionCharacter] = Field(default_factory=list)
+    user_protagonist_id: str | None = None
 
 
 class MessagesResponse(BaseModel):

@@ -29,6 +29,7 @@ async def build_chat_messages(
     recent_messages: list[Message],
     user_input: str,
     characters: list | None = None,
+    user_protagonist: dict | None = None,
 ) -> tuple[list[dict], dict]:
     """Build the OpenAI messages array with token budget management.
     
@@ -41,7 +42,14 @@ async def build_chat_messages(
     if not system_prompt:
         system_prompt = await _load_template("system.txt")
 
-    # Append session characters (if any) to system prompt
+    # Append user protagonist setting (user's avatar) to system prompt
+    if user_protagonist:
+        pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
+        psetting = user_protagonist.get("setting", "") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "setting", "")
+        if psetting:
+            system_prompt = system_prompt + f"\n\n【主角设定 - {pname}】\n{psetting}"
+
+    # Append session characters / NPC cast to system prompt
     if characters:
         char_parts = []
         for c in characters:
