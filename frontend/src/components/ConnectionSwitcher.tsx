@@ -32,7 +32,7 @@ export default function ConnectionSwitcher() {
             onClick={() => setOpen(false)}
           />
           <div
-            className="dropdown-menu shadow-xl border border-gray-700 max-h-[300px] overflow-y-auto"
+            className="shadow-xl border border-gray-700 max-h-[300px] overflow-y-auto"
             style={{
               position: "absolute",
               top: "100%",

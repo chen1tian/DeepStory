@@ -35,7 +35,7 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
 
   return (
     <>
-      <div className="nav-sessions flex-1 flex gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar px-2 py-1 items-center">
+      <div className="flex-1 flex gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar px-2 py-1 items-center">
         {openSessions.map((s) => (
           <div
             key={s.id}

@@ -26,9 +26,17 @@ function Toasts() {
   const removeToast = useUIStore((s) => s.removeToast);
   if (toasts.length === 0) return null;
   return (
-    <div className="toast-container">
+    <div className="fixed top-4 right-4 z-[1000] flex flex-col gap-2">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.type}`} onClick={() => removeToast(t.id)}>
+        <div
+          key={t.id}
+          className={`px-4 py-2.5 rounded-lg text-[13px] max-w-[360px] cursor-pointer animate-[slideIn_0.2s_ease-out] ${
+            t.type === "error" ? "bg-red-500 text-white" :
+            t.type === "success" ? "bg-green-500 text-white" :
+            "bg-blue-500 text-white"
+          }`}
+          onClick={() => removeToast(t.id)}
+        >
           {t.message}
         </div>
       ))}
@@ -234,7 +242,7 @@ export default function App() {
           </div>
 
           {statePanelOpen && (
-            <aside className="state-panel fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-primary)] md:w-80 w-full flex flex-col">
+            <aside className="fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex flex-col transition-all">
               {/* 移动端 state面板返回按钮 */}
               <div className="md:hidden flex items-center bg-[var(--bg-secondary)] border-b border-[var(--border)] h-12 px-3 justify-between shrink-0 sticky top-0 z-10 w-full">
                  <span className="font-bold">📊 状态板</span>

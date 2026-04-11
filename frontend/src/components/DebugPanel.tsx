@@ -63,57 +63,58 @@ export default function DebugPanel({ sessionId, onClose }: Props) {
   };
 
   return (
-    <div className="story-manager-overlay" onClick={onClose}>
-      <div className="debug-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="debug-panel-header">
-          <h2>🔍 调试 - 发送内容预览</h2>
-          <div className="spacer" />
-          <button className="btn-ghost btn" onClick={onClose}>✕</button>
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
+      <div className="w-[90vw] max-w-[900px] h-[85vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+          <h2 className="text-base font-semibold">🔍 调试 - 发送内容预览</h2>
+          <div className="flex-1" />
+          <button className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-4 py-2 rounded-lg text-[13px] cursor-pointer transition-colors" onClick={onClose}>✕</button>
         </div>
 
-        <div className="debug-input-section">
-          <label>模拟用户输入</label>
+        <div className="px-5 py-3.5 border-b border-[var(--border)] flex flex-col gap-1.5">
+          <label className="text-xs text-[var(--text-secondary)] font-medium">模拟用户输入</label>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               placeholder="输入测试消息…"
               style={{ flex: 1 }}
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors"
             />
-            <button className="btn" onClick={handleLoad} disabled={loading}>
+            <button className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50" onClick={handleLoad} disabled={loading}>
               {loading ? "加载中…" : "🔄 预览 Prompt"}
             </button>
           </div>
         </div>
 
-        {error && <div className="debug-error">{error}</div>}
+        {error && <div className="px-5 py-2.5 text-red-500 text-[13px]">{error}</div>}
 
         {data && (
-          <div className="debug-content">
+          <div className="flex-1 flex flex-col overflow-hidden">
             {/* Budget summary */}
-            <div className="debug-budget">
-              <span className="debug-budget-title">Token 预算</span>
-              <div className="debug-budget-items">
+            <div className="px-5 py-2.5 bg-[var(--bg-secondary)] border-b border-[var(--border)] flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">Token 预算</span>
+              <div className="flex gap-2.5 flex-wrap">
                 {Object.entries(data.budget).map(([k, v]) => (
-                  <span key={k} className="debug-budget-item">
-                    {k}: <strong>{v}</strong>
+                  <span key={k} className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg-surface)] px-2 py-0.5 rounded">
+                    {k}: <strong className="text-[var(--text-primary)]">{v}</strong>
                   </span>
                 ))}
               </div>
-              <span className="debug-budget-total">
+              <span className="text-xs font-semibold text-indigo-400 ml-auto">
                 共 {data.total_messages} 条消息
               </span>
             </div>
 
             {/* Toolbar */}
-            <div className="debug-toolbar">
-              <button className="btn-small" onClick={expandAll}>全部展开</button>
-              <button className="btn-small" onClick={collapseAll}>全部折叠</button>
-              <button className="btn-small" onClick={copyAll}>📋 复制全部</button>
+            <div className="px-5 py-2 flex gap-2 border-b border-[var(--border)]">
+              <button className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors" onClick={expandAll}>全部展开</button>
+              <button className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors" onClick={collapseAll}>全部折叠</button>
+              <button className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors" onClick={copyAll}>📋 复制全部</button>
             </div>
 
             {/* Messages */}
-            <div className="debug-messages">
+            <div className="flex-1 overflow-y-auto px-5 py-3 minimal-scrollbar">
               {data.messages.map((m, i) => (
                 <DebugMessageItem
                   key={i}
@@ -128,8 +129,8 @@ export default function DebugPanel({ sessionId, onClose }: Props) {
         )}
 
         {!data && !loading && !error && (
-          <div className="empty-state" style={{ padding: 40 }}>
-            <div className="icon">🔍</div>
+          <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3" style={{ padding: 40 }}>
+            <div className="text-5xl opacity-30">🔍</div>
             <div>点击"预览 Prompt"查看将发送给 AI 的完整内容</div>
           </div>
         )}
@@ -154,17 +155,17 @@ function DebugMessageItem({
   const preview = msg.content.length > 80 ? msg.content.slice(0, 80) + "…" : msg.content;
 
   return (
-    <div className="debug-msg-item">
-      <div className="debug-msg-header" onClick={onToggle}>
-        <span className="debug-msg-index">#{index + 1}</span>
-        <span className="debug-msg-role" style={{ color: roleColor }}>{roleLabel}</span>
-        {!expanded && <span className="debug-msg-preview">{preview}</span>}
-        <span className="spacer" />
-        <span className="debug-msg-chars">{msg.content.length} 字</span>
-        <span className="debug-msg-toggle">{expanded ? "▼" : "▶"}</span>
+    <div className="border border-[var(--border)] rounded-lg mb-2 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors" onClick={onToggle}>
+        <span className="text-[11px] text-[var(--text-secondary)] font-semibold min-w-[24px]">#{index + 1}</span>
+        <span className="text-xs font-semibold min-w-[90px]" style={{ color: roleColor }}>{roleLabel}</span>
+        {!expanded && <span className="text-xs text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">{preview}</span>}
+        <span className="flex-1" />
+        <span className="text-[11px] text-[var(--text-secondary)] whitespace-nowrap">{msg.content.length} 字</span>
+        <span className="text-[10px] text-[var(--text-secondary)]">{expanded ? "▼" : "▶"}</span>
       </div>
       {expanded && (
-        <pre className="debug-msg-content">{msg.content}</pre>
+        <pre className="px-3 py-3 text-[13px] leading-relaxed whitespace-pre-wrap break-words bg-[var(--bg-surface)] border-t border-[var(--border)] m-0 max-h-[300px] overflow-y-auto font-[inherit] text-[var(--text-primary)]">{msg.content}</pre>
       )}
     </div>
   );

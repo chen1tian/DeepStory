@@ -44,7 +44,7 @@ export default function CustomUIRenderer() {
   }, [messages]);
 
   return (
-    <div className="iframe-container">
+    <div className="flex-1 bg-white rounded-lg m-3 overflow-hidden">
       <iframe
         ref={iframeRef}
         sandbox="allow-scripts"

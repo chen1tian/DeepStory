@@ -32,41 +32,41 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
   const editingStory = stories.find((s) => s.id === editingId);
 
   return (
-    <div className="story-manager-overlay" onClick={onClose}>
-      <div className="story-manager" onClick={(e) => e.stopPropagation()}>
-        <div className="story-manager-header">
-          <h2>📚 故事管理</h2>
-          <button className="btn" onClick={handleAdd}>
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
+      <div className="w-[90vw] max-w-[1000px] h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+          <h2 className="text-base font-semibold">📚 故事管理</h2>
+          <button className="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[13px] cursor-pointer border-none transition-colors" onClick={handleAdd}>
             + 新建故事
           </button>
-          <div className="spacer" />
-          <button className="btn-ghost btn" onClick={onClose}>
+          <div className="flex-1" />
+          <button className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors" onClick={onClose}>
             ✕
           </button>
         </div>
-        <div className="story-manager-body">
+        <div className="flex flex-1 overflow-hidden">
           {/* Left: story list */}
-          <div className="story-list-panel">
-            {loading && <div className="story-loading">加载中…</div>}
+          <div className="w-[300px] min-w-[300px] border-r border-[var(--border)] overflow-y-auto p-3 minimal-scrollbar">
+            {loading && <div className="text-sm text-[var(--text-secondary)] p-3">加载中…</div>}
             {!loading && stories.length === 0 && (
-              <div className="story-loading">暂无故事，点击上方按钮创建</div>
+              <div className="text-sm text-[var(--text-secondary)] p-3">暂无故事，点击上方按钮创建</div>
             )}
             {stories.map((s) => (
               <div
                 key={s.id}
-                className={`story-card ${s.id === editingId ? "active" : ""}`}
-                onClick={() => setEditingId(s.id)}
+                className={`p-3 rounded-lg border-l-[3px] bg-[var(--bg-surface)] mb-2 cursor-pointer relative transition-colors hover:bg-[var(--bg-tertiary)] group${s.id === editingId ? " ring-1 ring-[var(--accent)] bg-[var(--bg-tertiary)]" : ""}`}
                 style={{ borderLeftColor: s.color || "var(--accent)" }}
+                onClick={() => setEditingId(s.id)}
               >
-                <div className="story-card-title">{s.title || "未命名故事"}</div>
-                <div className="story-card-desc">
+                <div className="text-[13px] font-medium text-[var(--text-primary)] mb-1 truncate">{s.title || "未命名故事"}</div>
+                <div className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2 mb-1">
                   {s.description || "暂无描述"}
                 </div>
-                <div className="story-card-meta">
+                <div className="text-[11px] text-[var(--text-secondary)]">
                   {s.openers.length} 条开场白 · {s.preset_characters.length} 个预设角色{s.cast_ids?.length ? ` · ${s.cast_ids.length} 演员` : ""}
                 </div>
                 <button
-                  className="story-card-delete"
+                  className="absolute top-2 right-2 bg-transparent border-none cursor-pointer text-sm opacity-0 group-hover:opacity-100 transition-opacity p-0 leading-none"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(s.id);
@@ -79,7 +79,7 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Right: edit form */}
-          <div className="story-edit-panel">
+          <div className="flex-1 overflow-y-auto p-5 minimal-scrollbar">
             {editingStory ? (
               <StoryForm
                 key={editingStory.id}
@@ -89,8 +89,8 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
                 userProtagonists={userProtagonists}
               />
             ) : (
-              <div className="empty-state">
-                <div className="icon">📖</div>
+              <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3">
+                <div className="text-5xl opacity-30">📖</div>
                 <div>选择或新建一个故事来编辑</div>
               </div>
             )}
@@ -203,44 +203,46 @@ function StoryForm({
     );
 
   return (
-    <div className="story-form">
-      <div className="story-form-row">
-        <label>标题</label>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">标题</label>
         <input
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
           value={form.title}
           onChange={(e) => update("title", e.target.value)}
           placeholder="故事标题"
         />
       </div>
 
-      <div className="story-form-row">
-        <label>描述</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">描述</label>
         <input
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
           value={form.description}
           onChange={(e) => update("description", e.target.value)}
           placeholder="简短描述"
         />
       </div>
 
-      <div className="story-form-row">
-        <label>主题色</label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">主题色</label>
+        <div className="flex gap-2 items-center">
           <input
             type="color"
             value={form.color}
             onChange={(e) => update("color", e.target.value)}
             style={{ width: 36, height: 28, padding: 0, border: "none", cursor: "pointer" }}
           />
-          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{form.color}</span>
+          <span className="text-xs text-[var(--text-secondary)]">{form.color}</span>
         </div>
       </div>
 
-      <div className="story-form-row">
-        <label>绑定主角</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">绑定主角</label>
         <select
+          className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg px-3 py-2 text-sm outline-none w-full"
           value={form.protagonist_id}
           onChange={(e) => update("protagonist_id", e.target.value)}
-          className="protagonist-select"
         >
           <option value="">不绑定（使用默认主角）</option>
           {userProtagonists.map((p) => (
@@ -251,21 +253,24 @@ function StoryForm({
         </select>
       </div>
 
-      <div className="story-form-section">
-        <div className="story-form-section-header">
-          <label>🎭 演员表 ({form.cast_ids.length})</label>
-          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>开始对话时自动加入这些角色</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">🎭 演员表 ({form.cast_ids.length})</label>
+          <span className="text-[11px] text-[var(--text-secondary)]">开始对话时自动加入这些角色</span>
         </div>
         {protagonists.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--text-secondary)", padding: "8px 0" }}>
+          <div className="text-xs text-[var(--text-secondary)] py-2">
             角色池为空，请先在角色池中创建角色
           </div>
         )}
-        <div className="cast-selection-grid">
+        <div className="grid grid-cols-2 gap-1.5">
           {protagonists.map((p) => {
             const checked = form.cast_ids.includes(p.id);
             return (
-              <label key={p.id} className={`cast-selection-item ${checked ? "selected" : ""}`}>
+              <label
+                key={p.id}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-[13px]${checked ? " border-indigo-500/50 bg-indigo-500/10 text-[var(--text-primary)]" : " border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"}`}
+              >
                 <input
                   type="checkbox"
                   checked={checked}
@@ -276,25 +281,26 @@ function StoryForm({
                     update("cast_ids", newIds);
                   }}
                 />
-                <span className="cast-avatar">{p.avatar_emoji}</span>
-                <span className="cast-name">{p.name}</span>
+                <span>{p.avatar_emoji}</span>
+                <span className="truncate">{p.name}</span>
               </label>
             );
           })}
         </div>
       </div>
 
-      <div className="story-form-row">
-        <div className="story-form-label-row">
-          <label>故事背景 (系统提示词)</label>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">故事背景 (系统提示词)</label>
           <button
-            className="btn-small btn-ai"
+            className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 px-2.5 py-1 rounded-md cursor-pointer text-xs transition-colors"
             onClick={() => setAiAssist({ fieldType: "background", original: form.background })}
           >
             ✨ AI 润色
           </button>
         </div>
         <textarea
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full resize-none"
           value={form.background}
           onChange={(e) => update("background", e.target.value)}
           placeholder="设定故事的世界观、基调和规则…"
@@ -302,76 +308,95 @@ function StoryForm({
         />
       </div>
 
-      <div className="story-form-section">
-        <div className="story-form-section-header">
-          <label>开场白 ({form.openers.length})</label>
-          <button className="btn-small" onClick={addOpener}>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">开场白 ({form.openers.length})</label>
+          <button
+            className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors"
+            onClick={addOpener}
+          >
             + 添加
           </button>
         </div>
         {form.openers.map((op, i) => (
-          <div key={i} className="story-opener-item">
-            <div className="story-form-label-row">
+          <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
               <input
+                className="bg-transparent border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-primary)] text-[13px] outline-none flex-1"
                 value={op.label}
                 onChange={(e) => updateOpener(i, "label", e.target.value)}
                 placeholder={`开场白 ${i + 1} 标签`}
-                className="opener-label-input"
-                style={{ flex: 1 }}
               />
               <button
-                className="btn-small btn-ai"
+                className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 px-2.5 py-1 rounded-md cursor-pointer text-xs transition-colors"
                 onClick={() => setAiAssist({ fieldType: "opener", original: op.content, openerIndex: i })}
               >
                 ✨ AI
               </button>
             </div>
             <textarea
+              className="bg-transparent border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-primary)] text-[13px] font-[inherit] outline-none resize-none w-full"
               value={op.content}
               onChange={(e) => updateOpener(i, "content", e.target.value)}
               placeholder="开场白内容…"
               rows={3}
             />
-            <button className="btn-small btn-danger" onClick={() => removeOpener(i)}>
+            <button
+              className="self-end bg-red-500/10 border border-red-500/30 text-red-400 px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-red-500/20 transition-colors"
+              onClick={() => removeOpener(i)}
+            >
               删除
             </button>
           </div>
         ))}
       </div>
 
-      <div className="story-form-section">
-        <div className="story-form-section-header">
-          <label>预设角色 ({form.preset_characters.length})</label>
-          <button className="btn-small" onClick={addCharacter}>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">预设角色 ({form.preset_characters.length})</label>
+          <button
+            className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors"
+            onClick={addCharacter}
+          >
             + 添加
           </button>
         </div>
         {form.preset_characters.map((ch, i) => (
-          <div key={i} className="story-character-item">
+          <div key={i} className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg p-3 flex flex-col gap-2">
             <input
+              className="bg-transparent border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-primary)] text-[13px] outline-none w-full"
               value={ch.name}
               onChange={(e) => updateCharacter(i, "name", e.target.value)}
               placeholder="角色名称"
             />
             <input
+              className="bg-transparent border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-primary)] text-[13px] outline-none w-full"
               value={ch.description}
               onChange={(e) => updateCharacter(i, "description", e.target.value)}
               placeholder="角色描述"
             />
             <input
+              className="bg-transparent border border-[var(--border)] rounded-md px-2.5 py-1.5 text-[var(--text-primary)] text-[13px] outline-none w-full"
               value={ch.status}
               onChange={(e) => updateCharacter(i, "status", e.target.value)}
               placeholder="初始状态"
             />
-            <button className="btn-small btn-danger" onClick={() => removeCharacter(i)}>
+            <button
+              className="self-end bg-red-500/10 border border-red-500/30 text-red-400 px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-red-500/20 transition-colors"
+              onClick={() => removeCharacter(i)}
+            >
               删除
             </button>
           </div>
         ))}
       </div>
 
-      <div className="story-form-actions">
-        <button className="btn" onClick={handleSave} disabled={saving}>
+      <div className="pt-2 flex justify-end">
+        <button
+          className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving}
+        >
           {saving ? "保存中…" : "💾 保存"}
         </button>
       </div>

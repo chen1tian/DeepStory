@@ -29,27 +29,36 @@ export default function EditMode() {
 
   if (!currentSessionId) {
     return (
-      <div className="empty-state">
+      <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3">
         <p>请先选择一个对话</p>
       </div>
     );
   }
 
   return (
-    <div className="edit-panel">
-      <div className="edit-toolbar">
-        <select value={template} onChange={(e) => setTemplate(e.target.value)}>
+    <div className="flex-1 flex flex-col min-w-0">
+      <div className="px-4 py-2 border-b border-[var(--border)] flex gap-2 items-center bg-[var(--bg-secondary)]">
+        <select
+          className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none"
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+        >
           <option value="bubble">气泡样式</option>
           <option value="card">卡片样式</option>
           <option value="rpg">RPG 样式</option>
         </select>
         <input
+          className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none flex-1"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="描述你想要的界面效果..."
           onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
         />
-        <button onClick={handleGenerate} disabled={loading || !description.trim()}>
+        <button
+          className="bg-indigo-500 border-none text-white px-3.5 py-1.5 rounded-md cursor-pointer text-[13px] hover:bg-indigo-400 disabled:opacity-50 transition-colors"
+          onClick={handleGenerate}
+          disabled={loading || !description.trim()}
+        >
           {loading ? "生成中..." : "🎨 生成"}
         </button>
       </div>

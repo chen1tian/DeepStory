@@ -305,40 +305,40 @@ export default function HookManager({ onClose }: { onClose: () => void }) {
   const editingHook = hooks.find((h) => h.id === editingId);
 
   return (
-    <div className="story-manager-overlay" onClick={onClose}>
-      <div className="story-manager" onClick={(e) => e.stopPropagation()}>
-        <div className="story-manager-header">
-          <h2>🔗 Chat Hook 管理</h2>
-          <button className="btn" onClick={handleAdd}>
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
+      <div className="w-[90vw] max-w-[1000px] h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+          <h2 className="text-base font-semibold">🔗 Chat Hook 管理</h2>
+          <button className="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[13px] cursor-pointer border-none transition-colors" onClick={handleAdd}>
             + 新建 Hook
           </button>
-          <div className="spacer" />
-          <button className="btn-ghost btn" onClick={onClose}>
+          <div className="flex-1" />
+          <button className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors" onClick={onClose}>
             ✕
           </button>
         </div>
 
-        <div className="story-manager-body">
+        <div className="flex flex-1 overflow-hidden">
           {/* Left: hook list */}
-          <div className="story-list-panel">
-            {loading && <div className="story-loading">加载中…</div>}
+          <div className="w-[300px] min-w-[300px] border-r border-[var(--border)] overflow-y-auto p-3 minimal-scrollbar">
+            {loading && <div className="text-sm text-[var(--text-secondary)] p-3">加载中…</div>}
             {!loading && hooks.length === 0 && (
-              <div className="story-loading">暂无 Hook，点击上方按钮创建</div>
+              <div className="text-sm text-[var(--text-secondary)] p-3">暂无 Hook，点击上方按钮创建</div>
             )}
             {hooks.map((h) => (
               <div
                 key={h.id}
-                className={`story-card ${h.id === editingId ? "active" : ""}`}
+                className={`p-3 rounded-lg border-l-[3px] border-l-[var(--accent)] bg-[var(--bg-surface)] mb-2 cursor-pointer relative transition-colors hover:bg-[var(--bg-tertiary)] group${h.id === editingId ? " ring-1 ring-[var(--accent)] bg-[var(--bg-tertiary)]" : ""}`}
                 onClick={() => setEditingId(h.id)}
               >
-                <div className="protagonist-card-header">
-                  <span className="protagonist-avatar">{h.enabled ? "🔗" : "⛔"}</span>
-                  <span className="story-card-title">{h.name || "未命名 Hook"}</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">{h.enabled ? "🔗" : "⛔"}</span>
+                  <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 truncate">{h.name || "未命名 Hook"}</span>
                   {!h.enabled && (
                     <span className="text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded">已禁用</span>
                   )}
                 </div>
-                <div className="story-card-desc text-xs text-gray-500">
+                <div className="text-xs text-gray-500">
                   {h.trigger === "chat_complete" ? "AI 回复后" : "状态更新后"} ·{" "}
                   {h.action.type === "render_branch_options"
                     ? "分支选项"
@@ -349,7 +349,7 @@ export default function HookManager({ onClose }: { onClose: () => void }) {
                     : h.action.type}
                 </div>
                 <button
-                  className="story-card-delete"
+                  className="absolute top-2 right-2 bg-transparent border-none cursor-pointer text-sm opacity-0 group-hover:opacity-100 transition-opacity p-0 leading-none"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(h.id);
@@ -362,7 +362,7 @@ export default function HookManager({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Right: edit form */}
-          <div className="story-edit-panel" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="flex-1 overflow-hidden" style={{ padding: 0 }}>
             {editingHook ? (
               <HookForm
                 key={editingHook.id}
@@ -370,8 +370,8 @@ export default function HookManager({ onClose }: { onClose: () => void }) {
                 onSave={(data) => editHook(editingHook.id, data)}
               />
             ) : (
-              <div className="empty-state">
-                <div className="icon">🔗</div>
+              <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3">
+                <div className="text-5xl opacity-30">🔗</div>
                 <div>选择或新建一个 Hook 来编辑</div>
                 <div className="text-xs text-gray-600 mt-2 max-w-xs text-center">
                   每个 Hook 在事件触发后调用 AI，所有同触发事件的 Hook 合并为一次请求
@@ -384,3 +384,4 @@ export default function HookManager({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+

@@ -37,8 +37,9 @@ export default function PresetSwitcher({ sessionId }: Props) {
   if (presets.length === 0) return null;
 
   return (
-    <div className="preset-switcher">
+    <div className="flex items-center">
       <select
+        className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none cursor-pointer disabled:opacity-50"
         value={currentPresetId}
         onChange={(e) => handleSwitch(e.target.value)}
         disabled={applying}

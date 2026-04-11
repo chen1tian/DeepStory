@@ -53,42 +53,42 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
   const editingProtagonist = protagonists.find((p) => p.id === editingId);
 
   return (
-    <div className="story-manager-overlay" onClick={onClose}>
-      <div className="story-manager" onClick={(e) => e.stopPropagation()}>
-        <div className="story-manager-header">
-          <h2>🎭 角色池</h2>
-          <button className="btn" onClick={handleAdd}>
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
+      <div className="w-[90vw] max-w-[1000px] h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+          <h2 className="text-base font-semibold">🎭 角色池</h2>
+          <button className="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[13px] cursor-pointer border-none transition-colors" onClick={handleAdd}>
             + 新建角色
           </button>
-          <div className="spacer" />
-          <button className="btn-ghost btn" onClick={onClose}>
+          <div className="flex-1" />
+          <button className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors" onClick={onClose}>
             ✕
           </button>
         </div>
-        <div className="story-manager-body">
+        <div className="flex flex-1 overflow-hidden">
           {/* Left: protagonist list */}
-          <div className="story-list-panel">
-            {loading && <div className="story-loading">加载中…</div>}
+          <div className="w-[300px] min-w-[300px] border-r border-[var(--border)] overflow-y-auto p-3 minimal-scrollbar">
+            {loading && <div className="text-sm text-[var(--text-secondary)] p-3">加载中…</div>}
             {!loading && protagonists.length === 0 && (
-              <div className="story-loading">暂无角色，点击上方按钮创建</div>
+              <div className="text-sm text-[var(--text-secondary)] p-3">暂无角色，点击上方按钮创建</div>
             )}
             {protagonists.map((p) => (
               <div
                 key={p.id}
-                className={`story-card ${p.id === editingId ? "active" : ""}`}
+                className={`p-3 rounded-lg border-l-[3px] border-l-[var(--accent)] bg-[var(--bg-surface)] mb-2 cursor-pointer relative transition-colors hover:bg-[var(--bg-tertiary)] group${p.id === editingId ? " ring-1 ring-[var(--accent)] bg-[var(--bg-tertiary)]" : ""}`}
                 onClick={() => setEditingId(p.id)}
               >
-                <div className="protagonist-card-header">
-                  <span className="protagonist-avatar">{p.avatar_emoji}</span>
-                  <span className="story-card-title">{p.name || "未命名角色"}</span>
-                  {p.is_default && <span className="protagonist-default-badge">默认主角</span>}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">{p.avatar_emoji}</span>
+                  <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 truncate">{p.name || "未命名角色"}</span>
+                  {p.is_default && <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full font-medium">默认主角</span>}
                 </div>
-                <div className="story-card-desc">
+                <div className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-2 mb-1.5">
                   {p.setting ? (p.setting.length > 60 ? p.setting.slice(0, 60) + "…" : p.setting) : "暂无设定"}
                 </div>
-                <div className="protagonist-card-btns" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <button
-                    className="btn-small"
+                    className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2 py-0.5 rounded text-xs hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
                     title="复制角色"
                     onClick={() => handleStartCopy(p)}
                   >
@@ -96,7 +96,7 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
                   </button>
                   {currentSessionId && (
                     <button
-                      className="btn-small"
+                      className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2 py-0.5 rounded text-xs hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
                       title="加入当前对话"
                       onClick={() => handleAddToSession(p)}
                     >
@@ -104,7 +104,7 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
                     </button>
                   )}
                   <button
-                    className="story-card-delete"
+                    className="ml-auto bg-transparent border-none cursor-pointer text-sm opacity-0 group-hover:opacity-100 transition-opacity p-0 leading-none"
                     onClick={() => handleDelete(p.id)}
                   >
                     🗑
@@ -115,7 +115,7 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
           </div>
 
           {/* Right: edit form */}
-          <div className="story-edit-panel">
+          <div className="flex-1 overflow-y-auto p-5 minimal-scrollbar">
             {editingProtagonist ? (
               <ProtagonistForm
                 key={editingProtagonist.id}
@@ -123,8 +123,8 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
                 onSave={(data) => editProtagonist(editingProtagonist.id, data)}
               />
             ) : (
-              <div className="empty-state">
-                <div className="icon">🎭</div>
+              <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3">
+                <div className="text-5xl opacity-30">🎭</div>
                 <div>选择或新建一个角色来编辑</div>
               </div>
             )}
@@ -134,23 +134,31 @@ export default function ProtagonistManager({ onClose }: { onClose: () => void })
 
       {/* Copy dialog */}
       {copyTarget && (
-        <div className="char-copy-overlay" onClick={() => setCopyTarget(null)}>
-          <div className="char-copy-dialog" onClick={(e) => e.stopPropagation()}>
-            <h4>复制角色</h4>
-            <p>为复制的角色命名：</p>
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center" onClick={() => setCopyTarget(null)}>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl p-5 w-80 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-sm font-semibold">复制角色</h4>
+            <p className="text-xs text-[var(--text-secondary)]">为复制的角色命名：</p>
             <input
               autoFocus
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
               value={copyName}
               onChange={(e) => setCopyName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleConfirmCopy()}
               placeholder="角色名称"
             />
-            <div className="char-copy-actions">
-              <button className="btn" onClick={handleConfirmCopy} disabled={!copyName.trim()}>
-                确认复制
-              </button>
-              <button className="btn-ghost btn" onClick={() => setCopyTarget(null)}>
+            <div className="flex justify-end gap-2">
+              <button
+                className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-4 py-2 rounded-lg text-[13px] cursor-pointer transition-colors"
+                onClick={() => setCopyTarget(null)}
+              >
                 取消
+              </button>
+              <button
+                className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50"
+                onClick={handleConfirmCopy}
+                disabled={!copyName.trim()}
+              >
+                确认复制
               </button>
             </div>
           </div>
@@ -208,22 +216,22 @@ function ProtagonistForm({
   };
 
   return (
-    <div className="story-form">
-      <div className="story-form-row">
-        <label>头像</label>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">头像</label>
         <div style={{ position: "relative" }}>
           <button
-            className="protagonist-emoji-btn"
+            className="text-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
           >
             {form.avatar_emoji}
           </button>
           {showEmojiPicker && (
-            <div className="protagonist-emoji-picker">
+            <div className="absolute top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 grid grid-cols-8 gap-1 z-10 shadow-lg">
               {EMOJI_OPTIONS.map((e) => (
                 <button
                   key={e}
-                  className={`protagonist-emoji-option ${e === form.avatar_emoji ? "selected" : ""}`}
+                  className={`text-xl p-1.5 rounded cursor-pointer border-none transition-colors hover:bg-[var(--bg-surface)]${e === form.avatar_emoji ? " bg-indigo-500/20" : " bg-transparent"}`}
                   onClick={() => {
                     update("avatar_emoji", e);
                     setShowEmojiPicker(false);
@@ -237,26 +245,28 @@ function ProtagonistForm({
         </div>
       </div>
 
-      <div className="story-form-row">
-        <label>名称</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[13px] font-medium text-[var(--text-secondary)]">名称</label>
         <input
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
           placeholder="主角名称"
         />
       </div>
 
-      <div className="story-form-row">
-        <div className="story-form-label-row">
-          <label>角色设定</label>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">角色设定</label>
           <button
-            className="btn-small btn-ai"
+            className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 px-2.5 py-1 rounded-md cursor-pointer text-xs transition-colors"
             onClick={() => setAiAssist({ fieldType: "protagonist", original: form.setting })}
           >
             ✨ AI 润色
           </button>
         </div>
         <textarea
+          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full resize-none"
           value={form.setting}
           onChange={(e) => update("setting", e.target.value)}
           placeholder="描述主角的性格、背景、特长、行为习惯等…"
@@ -264,8 +274,8 @@ function ProtagonistForm({
         />
       </div>
 
-      <div className="story-form-row">
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-secondary)] cursor-pointer">
           <input
             type="checkbox"
             checked={form.is_default}
@@ -275,8 +285,12 @@ function ProtagonistForm({
         </label>
       </div>
 
-      <div className="story-form-actions">
-        <button className="btn" onClick={handleSave} disabled={saving}>
+      <div className="pt-2 flex justify-end">
+        <button
+          className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving}
+        >
           {saving ? "保存中…" : "💾 保存"}
         </button>
       </div>
