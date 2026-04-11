@@ -311,3 +311,25 @@ export const updateHook = (id: string, data: UpdateHookRequest) =>
   request<ChatHook>(`/hooks/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteHook = (id: string) =>
   request<{ status: string }>(`/hooks/${id}`, { method: "DELETE" });
+
+// Map
+export interface GenerateMapRequest {
+  location: string;
+  connections: Record<string, string[]>;
+  explored_locations: string[];
+  connection_id?: string | null;
+}
+
+export interface MapData {
+  ascii_map: string | null;
+  cache_key: string | null;
+}
+
+export const getMap = (sessionId: string) =>
+  request<MapData>(`/sessions/${sessionId}/map`);
+
+export const generateMap = (sessionId: string, data: GenerateMapRequest) =>
+  request<MapData>(`/sessions/${sessionId}/map/generate`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });

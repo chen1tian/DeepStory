@@ -18,6 +18,7 @@ import ConnectionSwitcher from "./components/ConnectionSwitcher";
 import DebugPanel from "./components/DebugPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import HookManager from "./components/HookManager";
+import MapOverlay from "./components/MapDisplay";
 import "./styles/global.css";
 
 function Toasts() {
@@ -96,6 +97,7 @@ export default function App() {
   return (
     <div className="app-layout h-[100dvh] flex flex-col w-full text-[var(--text-primary)]">
       <Toasts />
+      <MapOverlay />
 
       {showStoryManager && (
         <StoryManager onClose={() => setShowStoryManager(false)} />

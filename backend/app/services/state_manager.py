@@ -225,3 +225,106 @@ def build_rpg_summary(rpg: RPGStateData) -> RPGStateSummary:
         summary.nearby_npcs = "在场: " + ", ".join(npc_strs)
 
     return summary
+
+
+# ─────────────────────────────────────────────────────────────
+# ASCII map generation (cached per location/explored-locations)
+# ─────────────────────────────────────────────────────────────
+
+import hashlib  # noqa: E402
+
+
+def _map_cache_key(location: str, explored: list[str]) -> str:
+    content = (location or "") + "|" + ",".join(sorted(explored))
+    return hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
+
+
+async def get_cached_map(session_id: str) -> dict | None:
+    from app.storage.file_storage import read_json as _rj
+    return await _rj(session_id, "map_cache.json")
+
+
+async def generate_ascii_map(
+    session_id: str,
+    location: str,
+    connections: dict[str, list[str]],
+    explored: list[str],
+    connection_id: str | None = None,
+) -> dict:
+    """Generate (or return cached) ASCII art map. Only regenerates when location/explored changes."""
+    from app.services.llm_service import chat_completion
+    from app.storage.file_storage import read_json as _rj, write_json as _wj
+
+    key = _map_cache_key(location, explored)
+
+    cached = await _rj(session_id, "map_cache.json")
+    if cached and cached.get("cache_key") == key:
+        return cached
+
+    explored_set = set(explored)
+    seen_pairs: set[tuple] = set()
+    conn_lines: list[str] = []
+    for from_loc, tos in connections.items():
+        if from_loc not in explored_set:
+            continue
+        for to in tos:
+            if to not in explored_set:
+                continue
+            pair = tuple(sorted([from_loc, to]))
+            if pair not in seen_pairs:
+                seen_pairs.add(pair)
+                conn_lines.append(f"  {from_loc} ↔ {to}")
+
+    loc_text = "、".join(explored) if explored else "（暂无）"
+    conn_text = "\n".join(conn_lines) if conn_lines else "  （暂无已知路径）"
+
+    prompt = (
+        f"请为RPG游戏绘制一幅字符画地图。\n\n"
+        f"当前位置：{location or '未知'}\n"
+        f"已探索地点：{loc_text}\n"
+        f"已知路径：\n{conn_text}\n\n"
+        "绘图规则：\n"
+        "1. 用 ─ │ ┼ ┤ ├ ┬ ┴ 等线框字符绘制路径，或用空格表示位置关系\n"
+        "2. 当前位置标记为 ★[名称]，其余地点标记为 [名称]\n"
+        "3. 宽度不超过34个字符，高度不超过16行\n"
+        "4. 根据连接关系合理布局，相邻地点用线段相连\n"
+        "5. 只输出地图本身，不要任何额外说明、标题或markdown标记"
+    )
+
+    try:
+        result = await chat_completion(
+            [
+                {
+                    "role": "system",
+                    "content": "你是RPG字符画地图生成器。只返回地图，不含任何说明文字或markdown标记。",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            connection_id=connection_id,
+        )
+        ascii_map = result.strip()
+        if ascii_map.startswith("```"):
+            lines = ascii_map.split("\n")
+            end = -1 if lines[-1].strip() == "```" else len(lines)
+            ascii_map = "\n".join(lines[1:end]).strip()
+    except Exception:
+        log.exception("map_generation_failed", session_id=session_id)
+        ascii_map = _fallback_map(location, explored, connections)
+
+    cache_data = {"cache_key": key, "ascii_map": ascii_map}
+    await _wj(session_id, "map_cache.json", cache_data)
+    return cache_data
+
+
+def _fallback_map(
+    location: str, explored: list[str], connections: dict[str, list[str]]
+) -> str:
+    explored_set = set(explored)
+    lines = ["=== 已探索区域 ===", ""]
+    for loc in explored:
+        prefix = "★" if loc == location else "○"
+        lines.append(f" {prefix} [{loc}]")
+        neighbors = [nb for nb in connections.get(loc, []) if nb in explored_set and nb != loc]
+        for nb in neighbors:
+            lines.append(f"    └─ [{nb}]")
+    return "\n".join(lines)
