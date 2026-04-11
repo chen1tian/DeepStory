@@ -1,17 +1,24 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import MessageBubble from "./MessageBubble";
 import { useChatStore } from "../stores/chatStore";
 
 interface Props {
   onBranch: (messageId: string) => void;
+  onDelete: (messageId: string) => void;
+  onResend: (messageId: string) => void;
 }
 
-export default function MessageList({ onBranch }: Props) {
+export default function MessageList({ onBranch, onDelete, onResend }: Props) {
   const messages = useChatStore((s) => s.messages);
   const streamingContent = useChatStore((s) => s.streamingContent);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const summaryStatus = useChatStore((s) => s.summaryStatus);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const pendingDeleteIdx = pendingDeleteId
+    ? messages.findIndex((m) => m.id === pendingDeleteId)
+    : -1;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -27,8 +34,18 @@ export default function MessageList({ onBranch }: Props) {
         </div>
       )}
 
-      {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} onBranch={onBranch} />
+      {messages.map((msg, idx) => (
+        <MessageBubble
+          key={msg.id}
+          message={msg}
+          onBranch={onBranch}
+          onDelete={onDelete}
+          onResend={onResend}
+          isPendingDelete={pendingDeleteIdx >= 0 && idx >= pendingDeleteIdx}
+          isConfirming={pendingDeleteId === msg.id}
+          onConfirmStart={() => setPendingDeleteId(msg.id)}
+          onConfirmCancel={() => setPendingDeleteId(null)}
+        />
       ))}
 
       {isStreaming && streamingContent && (

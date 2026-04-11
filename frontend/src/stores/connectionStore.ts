@@ -10,6 +10,7 @@ import {
 interface ConnectionState {
   connections: Connection[];
   activeConnectionId: string | null;
+  stateConnectionId: string | null;
   loading: boolean;
 
   fetchConnections: () => Promise<void>;
@@ -17,11 +18,13 @@ interface ConnectionState {
   editConnection: (id: string, data: UpdateConnectionRequest) => Promise<Connection>;
   removeConnection: (id: string) => Promise<void>;
   setActiveConnectionId: (id: string | null) => void;
+  setStateConnectionId: (id: string | null) => void;
 }
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
   connections: [],
   activeConnectionId: localStorage.getItem("activeConnectionId") || null,
+  stateConnectionId: localStorage.getItem("stateConnectionId") || null,
   loading: false,
 
   fetchConnections: async () => {
@@ -83,5 +86,14 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
       localStorage.removeItem("activeConnectionId");
     }
     set({ activeConnectionId: id });
-  }
+  },
+
+  setStateConnectionId: (id: string | null) => {
+    if (id) {
+      localStorage.setItem("stateConnectionId", id);
+    } else {
+      localStorage.removeItem("stateConnectionId");
+    }
+    set({ stateConnectionId: id });
+  },
 }));

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useSessionStore } from "../stores/sessionStore";
 import { useChatStore } from "../stores/chatStore";
 import { useUIStore } from "../stores/uiStore";
@@ -11,6 +11,9 @@ import { branchFromMessage } from "../services/api";
 export default function ChatView() {
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const sendBranchMessage = useChatStore((s) => s.sendBranchMessage);
+  const deleteMessagesFrom = useChatStore((s) => s.deleteMessagesFrom);
+  const resendMessage = useChatStore((s) => s.resendMessage);
+  const messages = useChatStore((s) => s.messages);
   const addToast = useUIStore((s) => s.addToast);
 
   const handleBranch = useCallback(
@@ -29,6 +32,32 @@ export default function ChatView() {
     [currentSessionId, sendBranchMessage, addToast]
   );
 
+  const handleDelete = useCallback(
+    async (messageId: string) => {
+      if (!currentSessionId) return;
+      try {
+        await deleteMessagesFrom(currentSessionId, messageId);
+      } catch {
+        addToast("删除消息失败", "error");
+      }
+    },
+    [currentSessionId, deleteMessagesFrom, addToast]
+  );
+
+  const handleResend = useCallback(
+    async (messageId: string) => {
+      if (!currentSessionId) return;
+      const msg = messages.find((m) => m.id === messageId);
+      if (!msg) return;
+      try {
+        await resendMessage(currentSessionId, msg);
+      } catch {
+        addToast("重发消息失败", "error");
+      }
+    },
+    [currentSessionId, messages, resendMessage, addToast]
+  );
+
   if (!currentSessionId) {
     return (
       <div className="flex bg-[var(--bg-primary)] h-full items-center justify-center text-center text-gray-500">
@@ -45,7 +74,7 @@ export default function ChatView() {
 
   return (
     <div className="relative flex flex-col h-full bg-[var(--bg-primary)]">
-      <MessageList onBranch={handleBranch} />
+      <MessageList onBranch={handleBranch} onDelete={handleDelete} onResend={handleResend} />
       <SceneActions />
       <div className="w-full relative shadow-[0_-20px_40px_-5px_rgba(26,26,46,0.9)]">
         <MessageInput />

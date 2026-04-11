@@ -65,6 +65,12 @@ export const getMessages = (sessionId: string) =>
     `/chat/${sessionId}/messages`
   );
 
+export const deleteMessagesFrom = (sessionId: string, fromMessageId: string) =>
+  request<{ ok: boolean }>(
+    `/chat/${sessionId}/messages?from_message_id=${encodeURIComponent(fromMessageId)}`,
+    { method: "DELETE" }
+  );
+
 // State
 export const getState = (sessionId: string) =>
   request<StateData>(`/state/${sessionId}`);

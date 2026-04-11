@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Message, TokenBudgetInfo, StateData, WSMessageOut } from "../types";
 import { ChatWebSocket } from "../services/websocket";
-import { getMessages, getState } from "../services/api";
+import { getMessages, getState, deleteMessagesFrom as apiDeleteMessagesFrom } from "../services/api";
 
 interface ChatState {
   messages: Message[];
@@ -19,6 +19,8 @@ interface ChatState {
   disconnect: () => void;
   sendMessage: (content: string) => void;
   sendBranchMessage: (content: string, fromMessageId: string) => void;
+  deleteMessagesFrom: (sessionId: string, messageId: string) => Promise<void>;
+  resendMessage: (sessionId: string, message: Message) => Promise<void>;
   loadMessages: (sessionId: string) => Promise<void>;
   loadState: (sessionId: string) => Promise<void>;
   clearError: () => void;
@@ -125,7 +127,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...messages, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId") });
+    ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
   },
 
   sendBranchMessage: (content: string, fromMessageId: string) => {
@@ -148,7 +150,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId") });
+    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
   },
 
   loadMessages: async (sessionId: string) => {
@@ -170,4 +172,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  deleteMessagesFrom: async (sessionId: string, messageId: string) => {
+    await apiDeleteMessagesFrom(sessionId, messageId);
+    const { messages } = get();
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx >= 0) {
+      set({ messages: messages.slice(0, idx) });
+    }
+  },
+
+  resendMessage: async (sessionId: string, message: Message) => {
+    const { ws, isStreaming } = get();
+    if (!ws || isStreaming) return;
+
+    // Delete this message and everything after from backend + local state
+    await apiDeleteMessagesFrom(sessionId, message.id);
+    const { messages } = get();
+    const idx = messages.findIndex((m) => m.id === message.id);
+    const trimmed = idx >= 0 ? messages.slice(0, idx) : messages;
+
+    // Re-add the user message locally
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      parent_id: trimmed.length > 0 ? trimmed[trimmed.length - 1].id : null,
+      role: "user",
+      content: message.content,
+      timestamp: new Date().toISOString(),
+      token_count: 0,
+      branch_id: "main",
+    };
+    set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
+    ws.send({ type: "chat", content: message.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+  },
 }));

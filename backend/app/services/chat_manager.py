@@ -162,3 +162,27 @@ async def create_branch_from(session_id: str, from_message_id: str) -> list[str]
     await write_json(session_id, "session.json", session.model_dump())
 
     return chain
+
+
+async def delete_messages_from(session_id: str, from_message_id: str) -> None:
+    """Delete from_message_id and all subsequent messages in the active branch."""
+    session = await load_session(session_id)
+    if session is None:
+        raise ValueError(f"Session {session_id} not found")
+
+    if from_message_id not in session.active_branch:
+        raise ValueError(f"Message {from_message_id} not in active branch")
+
+    idx = session.active_branch.index(from_message_id)
+    ids_to_delete = set(session.active_branch[idx:])
+
+    # Trim active_branch
+    session.active_branch = session.active_branch[:idx]
+    session.updated_at = datetime.now().isoformat()
+
+    # Remove deleted messages from messages.json
+    all_messages = await load_messages(session_id)
+    remaining = [m for m in all_messages if m.id not in ids_to_delete]
+
+    await write_json(session_id, "messages.json", [m.model_dump() for m in remaining])
+    await write_json(session_id, "session.json", session.model_dump())

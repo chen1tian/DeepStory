@@ -29,7 +29,7 @@ MODEL_NAME=gpt-4o-mini
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 ```
 
 后端运行在 http://127.0.0.1:8001，健康检查：http://127.0.0.1:8001/api/health

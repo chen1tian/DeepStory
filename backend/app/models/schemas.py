@@ -424,6 +424,7 @@ class WSMessageIn(BaseModel):
     content: str = ""
     branch_from_message_id: str | None = None
     connection_id: str | None = None
+    state_connection_id: str | None = None  # override connection for state extraction
 
 
 class WSMessageOut(BaseModel):

@@ -15,6 +15,7 @@ from app.services.chat_manager import (
     get_branch_messages,
     add_message_to_branch,
     create_branch_from,
+    delete_messages_from,
     get_chat_lock,
 )
 from app.services.prompt_builder import build_chat_messages
@@ -165,14 +166,14 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
         ).model_dump_json())
 
         # Trigger background summarization
-        asyncio.create_task(_background_post_chat(session_id, connection_id=msg_in.connection_id))
+        asyncio.create_task(_background_post_chat(session_id, connection_id=msg_in.connection_id, state_connection_id=msg_in.state_connection_id))
 
     except Exception as e:
         log.exception("chat_error", session_id=session_id)
         await ws.send_text(WSMessageOut(type="error", content=str(e)).model_dump_json())
 
 
-async def _background_post_chat(session_id: str, connection_id: str | None = None) -> None:
+async def _background_post_chat(session_id: str, connection_id: str | None = None, state_connection_id: str | None = None) -> None:
     """Background task: summarize and extract state after chat completes."""
     try:
         branch_msgs = await get_branch_messages(session_id)
@@ -183,8 +184,9 @@ async def _background_post_chat(session_id: str, connection_id: str | None = Non
             await incremental_summarize(session_id, branch_msgs, connection_id=connection_id)
             await event_bus.emit("summary_complete", session_id=session_id)
 
-        # Extract state
-        state = await extract_state(session_id, branch_msgs, connection_id=connection_id)
+        # Extract state — use state_connection_id if specified, otherwise fall back to connection_id
+        effective_state_conn = state_connection_id or connection_id
+        state = await extract_state(session_id, branch_msgs, connection_id=effective_state_conn)
         await event_bus.emit("state_updated", session_id=session_id, data=state.model_dump())
 
     except Exception:
@@ -208,3 +210,15 @@ async def get_messages(session_id: str, branch: str | None = Query(None)):
         messages=msgs,
         active_branch=session.active_branch,
     )
+
+
+@router.delete("/chat/{session_id}/messages")
+async def delete_messages(session_id: str, from_message_id: str = Query(...)):
+    session = await load_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    try:
+        await delete_messages_from(session_id, from_message_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"ok": True}
