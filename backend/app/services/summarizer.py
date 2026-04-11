@@ -166,4 +166,3 @@ def _sync_legacy_fields(state: StateData) -> None:
         key_items=[i.name for i in rpg.inventory if i.category == "key_item"],
     )
     state.version = rpg.version
-    return StateData(**data)

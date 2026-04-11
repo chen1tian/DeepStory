@@ -3,6 +3,7 @@ import { useChatStore } from "../stores/chatStore";
 import { useConnectionStore } from "../stores/connectionStore";
 import { createProtagonistFromRPG } from "../services/api";
 import { useProtagonistStore } from "../stores/protagonistStore";
+import MapDisplay from "./MapDisplay";
 import type { StateData, RPGCharacter } from "../types";
 
 function HealthBar({ current, max, color = "#22c55e" }: { current: number; max: number; color?: string }) {
@@ -365,11 +366,11 @@ export default function StatePanel() {
           {rpg.explored_locations.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div className="label">已探索地点 ({rpg.explored_locations.length})</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {rpg.explored_locations.map((loc, i) => (
-                  <span key={i} className="rpg-tag">{loc.name}</span>
-                ))}
-              </div>
+              <MapDisplay
+                locations={rpg.explored_locations}
+                connections={rpg.region_connections}
+                currentLocation={rpg.scene.location}
+              />
             </div>
           )}
         </div>
