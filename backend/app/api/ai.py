@@ -12,6 +12,7 @@ class PolishRequest(BaseModel):
     original: str
     instruction: str
     field_type: str = "text"  # "background" | "opener"
+    connection_id: str | None = None
 
 
 class PolishResponse(BaseModel):
@@ -53,5 +54,5 @@ async def polish_text(req: PolishRequest):
         {"role": "user", "content": user_content},
     ]
 
-    result = await chat_completion(messages, temperature=0.8, max_tokens=2000)
+    result = await chat_completion(messages, connection_id=req.connection_id, temperature=0.8, max_tokens=2000)
     return PolishResponse(result=result)

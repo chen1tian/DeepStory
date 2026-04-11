@@ -36,6 +36,8 @@ async def lifespan(app: FastAPI):
     user_protagonists_dir.mkdir(parents=True, exist_ok=True)
     presets_dir = settings.data_dir / "presets"
     presets_dir.mkdir(parents=True, exist_ok=True)
+    connections_dir = settings.data_dir / "connections"
+    connections_dir.mkdir(parents=True, exist_ok=True)
     log.info("app_startup", data_dir=str(settings.data_dir))
     yield
     # Shutdown
@@ -65,6 +67,7 @@ from app.api.ai import router as ai_router  # noqa: E402
 from app.api.protagonists import router as protagonists_router  # noqa: E402
 from app.api.user_protagonists import router as user_protagonists_router  # noqa: E402
 from app.api.presets import router as presets_router  # noqa: E402
+from app.api.connections import router as connections_router  # noqa: E402
 from app.api.debug import router as debug_router  # noqa: E402
 from app.api.characters import router as characters_router  # noqa: E402
 
@@ -77,6 +80,7 @@ app.include_router(ai_router, prefix="/api")
 app.include_router(protagonists_router, prefix="/api")
 app.include_router(user_protagonists_router, prefix="/api")
 app.include_router(presets_router, prefix="/api")
+app.include_router(connections_router, prefix="/api")
 app.include_router(debug_router, prefix="/api")
 app.include_router(characters_router, prefix="/api")
 

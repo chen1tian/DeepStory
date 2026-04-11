@@ -20,6 +20,9 @@ import type {
   CreateSessionCharacterRequest,
   UpdateSessionCharacterRequest,
   RPGCharacter,
+  Connection,
+  CreateConnectionRequest,
+  UpdateConnectionRequest,
 } from "../types";
 
 const BASE = "/api";
@@ -83,7 +86,7 @@ export const generateUI = (
 ) =>
   request<{ html: string }>(`/editor/${sessionId}/generate`, {
     method: "POST",
-    body: JSON.stringify({ description, template }),
+    body: JSON.stringify({ description, template, connection_id: localStorage.getItem("activeConnectionId") }),
   });
 
 export const getTemplates = () =>
@@ -113,7 +116,7 @@ export const deleteStory = (id: string) =>
 export const aiPolish = (original: string, instruction: string, fieldType: string) =>
   request<{ result: string }>("/ai/polish", {
     method: "POST",
-    body: JSON.stringify({ original, instruction, field_type: fieldType }),
+    body: JSON.stringify({ original, instruction, field_type: fieldType, connection_id: localStorage.getItem("activeConnectionId") }),
   });
 
 // Protagonists
@@ -234,6 +237,26 @@ export const updatePreset = (id: string, data: UpdatePresetRequest) =>
 
 export const deletePreset = (id: string) =>
   request<{ status: string }>(`/presets/${id}`, { method: "DELETE" });
+
+// Connections
+export const getConnections = () => request<Connection[]>("/connections");
+
+export const getConnection = (id: string) => request<Connection>(`/connections/${id}`);
+
+export const createConnection = (data: CreateConnectionRequest = {}) =>
+  request<Connection>("/connections", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateConnection = (id: string, data: UpdateConnectionRequest) =>
+  request<Connection>(`/connections/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteConnection = (id: string) =>
+  request<{ status: string }>(`/connections/${id}`, { method: "DELETE" });
 
 // Session system prompt
 export const updateSessionSystemPrompt = (

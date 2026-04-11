@@ -44,7 +44,7 @@ async def _load_summary(session_id: str) -> SummaryData:
     return SummaryData(**data)
 
 
-async def incremental_summarize(session_id: str, branch_messages: list[Message]) -> SummaryData:
+async def incremental_summarize(session_id: str, branch_messages: list[Message], connection_id: str | None = None) -> SummaryData:
     """Perform incremental summarization: old summary + new messages → new summary."""
     summary = await _load_summary(session_id)
 
@@ -68,7 +68,7 @@ async def incremental_summarize(session_id: str, branch_messages: list[Message])
         result = await chat_completion([
             {"role": "system", "content": "你是一个精确的文本总结助手。"},
             {"role": "user", "content": prompt},
-        ])
+        ], connection_id=connection_id)
 
         summary.rolling_summary = result
         summary.last_summarized_index = len(branch_messages)
@@ -82,7 +82,7 @@ async def incremental_summarize(session_id: str, branch_messages: list[Message])
     return summary
 
 
-async def extract_state(session_id: str, branch_messages: list[Message]) -> StateData:
+async def extract_state(session_id: str, branch_messages: list[Message], connection_id: str | None = None) -> StateData:
     """Extract RPG state delta from recent messages and apply to full state."""
     current_state = await get_state(session_id)
 
@@ -118,7 +118,7 @@ async def extract_state(session_id: str, branch_messages: list[Message]) -> Stat
         result = await chat_completion([
             {"role": "system", "content": "你是一个RPG游戏状态提取助手。只返回JSON，不要包含任何其他文本或markdown标记。"},
             {"role": "user", "content": prompt},
-        ])
+        ], connection_id=connection_id)
 
         result = result.strip()
         if result.startswith("```"):

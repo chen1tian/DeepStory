@@ -151,7 +151,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
 
         # Stream LLM response
         full_response = ""
-        async for token in chat_completion_stream(messages):
+        async for token in chat_completion_stream(messages, connection_id=msg_in.connection_id):
             full_response += token
             await ws.send_text(WSMessageOut(type="token", content=token).model_dump_json())
 
@@ -165,14 +165,14 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
         ).model_dump_json())
 
         # Trigger background summarization
-        asyncio.create_task(_background_post_chat(session_id))
+        asyncio.create_task(_background_post_chat(session_id, connection_id=msg_in.connection_id))
 
     except Exception as e:
         log.exception("chat_error", session_id=session_id)
         await ws.send_text(WSMessageOut(type="error", content=str(e)).model_dump_json())
 
 
-async def _background_post_chat(session_id: str) -> None:
+async def _background_post_chat(session_id: str, connection_id: str | None = None) -> None:
     """Background task: summarize and extract state after chat completes."""
     try:
         branch_msgs = await get_branch_messages(session_id)
@@ -180,11 +180,11 @@ async def _background_post_chat(session_id: str) -> None:
         # Summarize if needed
         if await should_summarize(session_id, branch_msgs):
             await _push_to_session(session_id, WSMessageOut(type="summary_progress", status="running"))
-            await incremental_summarize(session_id, branch_msgs)
+            await incremental_summarize(session_id, branch_msgs, connection_id=connection_id)
             await event_bus.emit("summary_complete", session_id=session_id)
 
         # Extract state
-        state = await extract_state(session_id, branch_msgs)
+        state = await extract_state(session_id, branch_msgs, connection_id=connection_id)
         await event_bus.emit("state_updated", session_id=session_id, data=state.model_dump())
 
     except Exception:

@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
 :root {
   --bg-primary: #1a1a2e;
   --bg-secondary: #16213e;
@@ -38,6 +41,7 @@ body {
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
@@ -47,24 +51,44 @@ body {
   border-radius: 3px;
 }
 
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
 /* Layout */
 .app-layout {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
 }
 
 /* Top Navigation Bar */
 .top-nav {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  height: 48px;
   gap: 8px;
   flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .top-nav {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 48px;
+  }
 }
 
 .nav-sessions {
@@ -74,8 +98,15 @@ body {
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
-  min-width: 0;
-  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .nav-sessions {
+    flex-wrap: wrap;
+    padding: 8px;
+    min-height: auto;
+  }
 }
 
 .nav-sessions::-webkit-scrollbar {
@@ -209,6 +240,12 @@ body {
   font-size: 14px;
   line-height: 1.7;
   position: relative;
+}
+
+@media (max-width: 768px) {
+  .message-bubble {
+    max-width: 90%;
+  }
 }
 
 .message-bubble.user {
@@ -491,9 +528,17 @@ body {
   min-width: 320px;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border);
-  overflow-y: auto;
-  padding: 16px;
+  /* overflow-y handled in component structure now */
   transition: margin-right 0.2s;
+}
+
+@media (max-width: 768px) {
+  .state-panel {
+    width: 100%;
+    min-width: 100%;
+    border-left: none;
+    /* padding removed so the sticky header fits perfectly */
+  }
 }
 
 .state-panel.collapsed {

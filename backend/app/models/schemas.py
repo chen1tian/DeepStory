@@ -138,12 +138,12 @@ class MapLocation(BaseModel):
 
 
 class SceneState(BaseModel):
-    location: str = ""
-    sub_location: str = ""
-    time: str = ""
-    weather: str = ""
-    atmosphere: str = ""
-    danger_level: str = ""
+    location: str | None = ""
+    sub_location: str | None = ""
+    time: str | None = ""
+    weather: str | None = ""
+    atmosphere: str | None = ""
+    danger_level: str | None = ""
     objects: list[SceneObject] = Field(default_factory=list)
     exits: list[SceneExit] = Field(default_factory=list)
     npcs: list[SceneNPC] = Field(default_factory=list)
@@ -151,11 +151,11 @@ class SceneState(BaseModel):
 
 class QuestInfo(BaseModel):
     name: str
-    type: str = "side"  # main, side
-    source_npc: str = ""
-    objective: str = ""
-    progress: str = ""
-    status: str = "active"  # active, completed, failed
+    type: str | None = "side"  # main, side
+    source_npc: str | None = ""
+    objective: str | None = ""
+    progress: str | None = ""
+    status: str | None = "active"  # active, completed, failed
 
 
 class StateChangeEvent(BaseModel):
@@ -331,6 +331,32 @@ class UpdateProtagonistRequest(BaseModel):
     is_default: bool | None = None
 
 
+# --- Connection schemas ---
+
+class Connection(BaseModel):
+    id: str
+    name: str = "未命名连接"
+    api_key: str = ""
+    api_base_url: str = ""
+    model_name: str = "gpt-4o-mini"
+    is_default: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+class CreateConnectionRequest(BaseModel):
+    name: str = "未命名连接"
+    api_key: str = ""
+    api_base_url: str = ""
+    model_name: str = "gpt-4o-mini"
+    is_default: bool = False
+
+class UpdateConnectionRequest(BaseModel):
+    name: str | None = None
+    api_key: str | None = None
+    api_base_url: str | None = None
+    model_name: str | None = None
+    is_default: bool | None = None
+
 # --- Preset schemas ---
 
 
@@ -397,6 +423,7 @@ class WSMessageIn(BaseModel):
     type: str  # "chat" | "chat_from_branch" | "ping"
     content: str = ""
     branch_from_message_id: str | None = None
+    connection_id: str | None = None
 
 
 class WSMessageOut(BaseModel):
@@ -410,6 +437,7 @@ class WSMessageOut(BaseModel):
 class EditorGenerateRequest(BaseModel):
     description: str
     template: str = "bubble"  # "bubble" | "card" | "rpg"
+    connection_id: str | None = None
 
 
 class TokenBudgetInfo(BaseModel):

@@ -222,6 +222,7 @@ export interface WSMessageIn {
   type: "chat" | "chat_from_branch" | "ping";
   content?: string;
   branch_from_message_id?: string;
+  connection_id?: string | null;
 }
 
 export interface WSMessageOut {
@@ -247,6 +248,37 @@ export interface CreateSessionRequest {
   story_id?: string;
   opener_index?: number;
   protagonist_id?: string;
+  user_protagonist_id?: string;
+  connection_id?: string;
+}
+
+// --- Connections ---
+
+export interface Connection {
+  id: string;
+  name: string;
+  api_key: string;
+  api_base_url: string;
+  model_name: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateConnectionRequest {
+  name?: string;
+  api_key?: string;
+  api_base_url?: string;
+  model_name?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateConnectionRequest {
+  name?: string;
+  api_key?: string;
+  api_base_url?: string;
+  model_name?: string;
+  is_default?: boolean;
 }
 
 export interface EditorTemplate {

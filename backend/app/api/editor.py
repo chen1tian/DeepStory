@@ -142,7 +142,7 @@ async def generate_ui(session_id: str, req: EditorGenerateRequest):
     html = await chat_completion([
         {"role": "system", "content": "你是一个专业的前端开发专家，只输出纯HTML代码。"},
         {"role": "user", "content": prompt},
-    ])
+    ], connection_id=req.connection_id)
 
     # Clean up potential markdown wrapping
     html = html.strip()

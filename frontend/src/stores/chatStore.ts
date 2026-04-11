@@ -125,7 +125,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...messages, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat", content });
+    ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId") });
   },
 
   sendBranchMessage: (content: string, fromMessageId: string) => {
@@ -148,7 +148,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId });
+    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId") });
   },
 
   loadMessages: async (sessionId: string) => {

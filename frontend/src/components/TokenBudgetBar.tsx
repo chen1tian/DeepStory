@@ -18,23 +18,31 @@ export default function TokenBudgetBar() {
   ];
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto" }}>
-      <div className="token-budget-bar">
-        {segments.map((s) => (
-          <div
-            key={s.key}
-            className={`segment ${s.cls}`}
-            style={{ width: pct(s.value) }}
-            title={`${s.label || s.key}: ${s.value} tokens`}
-          />
-        ))}
-      </div>
-      <div className="token-budget-label">
-        <span className="label-system">系统 {budget.system_prompt}</span>
-        <span className="label-state">状态 {budget.state}</span>
-        <span className="label-summary">摘要 {budget.summary}</span>
-        <span className="label-messages">消息 {budget.messages}</span>
-        <span className="label-reserved">预留 {budget.reserved}</span>
+    <div className="w-full bg-[var(--bg-primary)] px-4 py-2 border-t border-[var(--border)] bottom-0">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-800 gap-[1px]">
+          {segments.map((s) => (
+            <div
+              key={s.key}
+              className={`transition-all duration-300 ${
+                s.key === "system" ? "bg-purple-500" :
+                s.key === "state" ? "bg-cyan-500" :
+                s.key === "summary" ? "bg-amber-500" :
+                s.key === "messages" ? "bg-emerald-500" :
+                s.key === "reserved" ? "bg-slate-500" : "bg-[var(--bg-surface)]"
+              }`}
+              style={{ width: pct(s.value) }}
+              title={`${s.label || "剩余"}: ${s.value} tokens`}
+            />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2 text-[10px] text-gray-400 font-medium">
+          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-purple-500 mr-1.5"></span>系统 {budget.system_prompt}</span>
+          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-cyan-500 mr-1.5"></span>状态 {budget.state}</span>
+          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span>摘要 {budget.summary}</span>
+          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span>消息 {budget.messages}</span>
+          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-slate-500 mr-1.5"></span>预留 {budget.reserved}</span>
+        </div>
       </div>
     </div>
   );
