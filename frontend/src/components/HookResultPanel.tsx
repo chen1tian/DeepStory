@@ -29,17 +29,9 @@ function BranchOptionsResult({
   const raw = payload.result;
   const options: BranchOption[] = Array.isArray(raw) ? raw : [];
 
-  const [edits, setEdits] = useState<Record<number, string>>(() => {
-    const init: Record<number, string> = {};
-    options.forEach((o, i) => {
-      init[i] = o.prompt ?? String(o);
-    });
-    return init;
-  });
-
   const handleSend = useCallback(
-    (idx: number) => {
-      const content = edits[idx]?.trim();
+    (promptText: string) => {
+      const content = promptText.trim();
       if (!content || isStreaming) return;
       // Branch from last assistant message
       const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
@@ -51,39 +43,33 @@ function BranchOptionsResult({
       }
       onDismiss();
     },
-    [edits, isStreaming, messages, sendBranchMessage, onDismiss]
+    [isStreaming, messages, sendBranchMessage, onDismiss]
   );
 
   if (options.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2">
-      {options.map((opt, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-3 hover:border-indigo-500/40 transition-colors"
-        >
-          {opt.label && (
-            <span className="text-[11px] font-medium text-indigo-400/80 tracking-wide uppercase">
-              {opt.label}
-            </span>
-          )}
-          <textarea
-            className="w-full bg-transparent border border-[var(--border)] focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 rounded-lg px-3 py-2 text-[13px] text-gray-200 placeholder-gray-500 resize-none outline-none transition-all minimal-scrollbar"
-            rows={2}
-            value={edits[i] ?? ""}
-            onChange={(e) => setEdits((prev) => ({ ...prev, [i]: e.target.value }))}
-            disabled={isStreaming}
-          />
+    <div className="flex flex-wrap items-center gap-1.5 bg-[var(--bg-secondary)] px-2.5 py-1.5 rounded-xl border border-[var(--border)] shadow-inner">
+      <span className="text-xs text-indigo-400/80 mr-1 whitespace-nowrap font-medium tracking-wide">⚡ 选项</span>
+      {options.map((opt, i) => {
+        const promptText = String(opt.prompt ?? opt);
+        return (
           <button
-            className="self-end px-3 py-1 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all"
-            onClick={() => handleSend(i)}
-            disabled={isStreaming || !edits[i]?.trim()}
+            key={i}
+            className="px-2.5 py-1 text-[13px] rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 flex items-center gap-1.5 hover:bg-indigo-500/20 hover:border-indigo-500/50 hover:shadow-md hover:-translate-y-px transition-all disabled:opacity-40 disabled:cursor-not-allowed max-w-full text-left"
+            onClick={() => handleSend(promptText)}
+            title={promptText}
+            disabled={isStreaming}
           >
-            发送
+            {opt.label && (
+              <span className="text-[10px] font-medium opacity-80 shrink-0 uppercase tracking-wider bg-indigo-500/20 px-1 rounded">
+                {opt.label}
+              </span>
+            )}
+            <span className="truncate min-w-0 max-w-[240px] leading-tight">{promptText}</span>
           </button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

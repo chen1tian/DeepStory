@@ -191,44 +191,44 @@ export default function App() {
       {/* Main */}
       <div className="main-content flex-1 flex flex-col min-h-0 bg-[var(--bg-primary)]">
         {/* PC端顶部工具栏 */}
-        <div className="hidden md:flex items-center h-12 border-b border-[var(--border)] px-4 gap-3 bg-[var(--bg-secondary)] shadow-sm shrink-0 relative z-10">
+        <div className="hidden md:flex items-center h-12 border-b border-white/[0.08] px-4 gap-2 bg-[var(--bg-secondary)] shrink-0 relative z-10 shadow-sm">
           <button
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${!editMode ? "bg-indigo-600 text-white shadow-md text-shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)]"}`}
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all border border-transparent ${!editMode ? "bg-blue-600 text-white shadow-sm ring-1 ring-white/10 ring-inset" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
             onClick={() => { if (editMode) toggleEditMode(); }}
           >
             💬 聊天
           </button>
           <button
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${editMode ? "bg-indigo-600 text-white shadow-md text-shadow-sm" : "bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)]"}`}
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all border border-transparent ${editMode ? "bg-blue-600 text-white shadow-sm ring-1 ring-white/10 ring-inset" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
             onClick={() => { if (!editMode) toggleEditMode(); }}
           >
             🎨 编辑
           </button>
           <div className="flex-1" />
           {currentSessionId && <PresetSwitcher sessionId={currentSessionId} />}
-          <div className="h-4 w-px bg-gray-700 mx-1" />
+          <div className="h-4 w-px bg-white/10 mx-1.5" />
           <ConnectionSwitcher />
-          <div className="h-4 w-px bg-gray-700 mx-1" />
+          <div className="h-4 w-px bg-white/10 mx-1.5" />
           <button
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${statePanelOpen ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" : "bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)]"}`}
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${statePanelOpen ? "bg-white/10 text-white ring-1 ring-inset ring-white/10 shadow-sm" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
             onClick={toggleStatePanel}
           >
-            <span className="text-base">📊</span> 状态
+            <span className="text-[14px]">📊</span> 状态
           </button>
           <button
             onClick={() => setShowDebugPanel(true)}
             disabled={!currentSessionId}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 border border-transparent"
             title="调试 - 查看发送内容"
           >
-            <span className="text-base">🔍</span> 调试
+            <span className="text-[14px]">🔍</span> 调试
           </button>
           <button
             onClick={() => setShowHookManager(true)}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)] transition-all flex items-center gap-1"
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
             title="Chat Hook 管理"
           >
-            <span className="text-base">🔗</span> Hooks
+            <span className="text-[14px]">🔗</span> Hooks
           </button>
         </div>
 

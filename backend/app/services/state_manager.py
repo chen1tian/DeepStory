@@ -302,11 +302,12 @@ async def generate_ascii_map(
             ],
             connection_id=connection_id,
         )
-        ascii_map = result.strip()
-        if ascii_map.startswith("```"):
+        ascii_map = result.strip("\n\r")
+        if ascii_map.strip().startswith("```"):
+            ascii_map = ascii_map.strip()
             lines = ascii_map.split("\n")
             end = -1 if lines[-1].strip() == "```" else len(lines)
-            ascii_map = "\n".join(lines[1:end]).strip()
+            ascii_map = "\n".join(lines[1:end]).strip("\n\r")
     except Exception:
         log.exception("map_generation_failed", session_id=session_id)
         ascii_map = _fallback_map(location, explored, connections)

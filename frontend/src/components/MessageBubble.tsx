@@ -33,21 +33,21 @@ export default function MessageBubble({
     >
       {/* 气泡本体 */}
       <div
-        className={`relative px-5 py-3.5 max-w-[90%] md:max-w-[75%] text-[15px] leading-7 break-words shadow-sm transition-all ${
+        className={`relative px-2 py-2 max-w-[92%] md:max-w-[80%] text-[15px] leading-[1.8] break-words transition-all ${
           isPendingDelete
             ? isUser
-              ? "bg-red-900/40 text-indigo-100 rounded-2xl rounded-tr-sm border border-red-500/50"
-              : "bg-red-950/30 text-gray-300 border border-red-500/40 rounded-2xl rounded-tl-sm"
+              ? "bg-red-900/30 text-red-100 rounded-xl rounded-tr-sm border border-red-500/40"
+              : "bg-red-950/20 text-gray-300 border border-red-500/30 rounded-xl rounded-tl-sm"
             : isUser
-              ? "bg-indigo-600 text-indigo-50 rounded-2xl rounded-tr-sm border border-indigo-500/50 hover:shadow-md"
-              : "bg-[var(--bg-surface)] text-gray-200 border border-[var(--border)] rounded-2xl rounded-tl-sm hover:border-gray-600 hover:bg-[#202c4f]"
+              ? "bg-blue-600 text-white rounded-xl rounded-tr-sm shadow-sm ring-1 ring-inset ring-white/10"
+              : "bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-xl rounded-tl-sm shadow-sm ring-1 ring-inset ring-white/5 hover:bg-white/[0.04] hover:ring-white/10"
         }`}
       >
         {isUser ? (
           <div className="whitespace-pre-wrap">{message.content}</div>
         ) : (
           <div
-            className={`prose prose-invert prose-p:my-2 prose-pre:my-3 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded max-w-none ${
+            className={`prose prose-invert prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0 prose-pre:my-2 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md max-w-none ${
               isStreaming ? "streaming-cursor" : ""
             }`}
           >
@@ -61,14 +61,14 @@ export default function MessageBubble({
       {/* 操作栏 */}
       {hasActions && (
         <div
-          className={`flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${
+          className={`flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity ${
             isUser ? "flex-row-reverse" : "flex-row"
           }`}
         >
           {/* 分支按钮 */}
           {onBranch && (
             <button
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/30 transition-all"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/5"
               title="从此处分支出发"
               onClick={() => onBranch(message.id)}
             >
@@ -80,7 +80,7 @@ export default function MessageBubble({
           {/* 重发按钮（仅用户消息） */}
           {onResend && isUser && (
             <button
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-emerald-500/10 transition-all border border-transparent hover:border-emerald-500/20"
               title="重新发送此消息"
               onClick={() => onResend(message.id)}
             >
@@ -93,7 +93,7 @@ export default function MessageBubble({
           {onDelete && (
             isConfirming ? (
               <button
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-red-400 bg-red-500/10 border border-red-500/40 hover:bg-red-500/20 transition-all"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all shadow-sm"
                 title="确认删除此条及之后所有消息"
                 onClick={() => { onDelete(message.id); onConfirmCancel?.(); }}
               >
@@ -102,7 +102,7 @@ export default function MessageBubble({
               </button>
             ) : (
               <button
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-all"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                 title="删除此条及之后所有消息"
                 onClick={() => onConfirmStart?.()}
               >

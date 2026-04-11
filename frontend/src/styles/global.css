@@ -2,21 +2,21 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-tertiary: #0f3460;
-  --bg-surface: #1e2a4a;
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --user-bubble: #4f46e5;
+  --bg-primary: #0f172a;
+  --bg-secondary: #0b0f19;
+  --bg-tertiary: #1e293b;
+  --bg-surface: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --user-bubble: #2563eb;
   --assistant-bubble: #1e293b;
-  --border: #334155;
+  --border: rgba(255, 255, 255, 0.08);
   --error: #ef4444;
   --success: #22c55e;
   --info: #3b82f6;
-  --scrollbar-thumb: #475569;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
   --scrollbar-track: transparent;
 }
 
