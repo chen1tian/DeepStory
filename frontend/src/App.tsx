@@ -17,6 +17,7 @@ import ConnectionManager from "./components/ConnectionManager";
 import ConnectionSwitcher from "./components/ConnectionSwitcher";
 import DebugPanel from "./components/DebugPanel";
 import HistoryPanel from "./components/HistoryPanel";
+import HookManager from "./components/HookManager";
 import "./styles/global.css";
 
 function Toasts() {
@@ -55,6 +56,7 @@ export default function App() {
   const [showConnectionManager, setShowConnectionManager] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [showHookManager, setShowHookManager] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const sessions = useSessionStore((s) => s.sessions);
@@ -118,6 +120,9 @@ export default function App() {
       )}
       {showHistoryPanel && (
         <HistoryPanel onClose={() => setShowHistoryPanel(false)} />
+      )}
+      {showHookManager && (
+        <HookManager onClose={() => setShowHookManager(false)} />
       )}
       {showStorySelector && (
         <StorySelector
@@ -207,6 +212,13 @@ export default function App() {
             title="调试 - 查看发送内容"
           >
             <span className="text-base">🔍</span> 调试
+          </button>
+          <button
+            onClick={() => setShowHookManager(true)}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-transparent text-gray-400 hover:text-gray-200 hover:bg-[var(--bg-tertiary)] transition-all flex items-center gap-1"
+            title="Chat Hook 管理"
+          >
+            <span className="text-base">🔗</span> Hooks
           </button>
         </div>
 

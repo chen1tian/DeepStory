@@ -6,6 +6,7 @@ import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import TokenBudgetBar from "./TokenBudgetBar";
 import SceneActions from "./SceneActions";
+import HookResultPanel from "./HookResultPanel";
 import { branchFromMessage } from "../services/api";
 
 export default function ChatView() {
@@ -76,6 +77,7 @@ export default function ChatView() {
     <div className="relative flex flex-col h-full bg-[var(--bg-primary)]">
       <MessageList onBranch={handleBranch} onDelete={handleDelete} onResend={handleResend} />
       <SceneActions />
+      <HookResultPanel />
       <div className="w-full relative shadow-[0_-20px_40px_-5px_rgba(26,26,46,0.9)]">
         <MessageInput />
         <TokenBudgetBar />

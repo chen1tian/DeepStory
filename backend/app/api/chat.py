@@ -165,16 +165,31 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
             message_id=assistant_msg.id,
         ).model_dump_json())
 
-        # Trigger background summarization
-        asyncio.create_task(_background_post_chat(session_id, connection_id=msg_in.connection_id, state_connection_id=msg_in.state_connection_id))
+        # Trigger background summarization and hooks
+        asyncio.create_task(_background_post_chat(
+            session_id,
+            connection_id=msg_in.connection_id,
+            state_connection_id=msg_in.state_connection_id,
+            last_message_id=assistant_msg.id,
+        ))
 
     except Exception as e:
         log.exception("chat_error", session_id=session_id)
         await ws.send_text(WSMessageOut(type="error", content=str(e)).model_dump_json())
 
 
-async def _background_post_chat(session_id: str, connection_id: str | None = None, state_connection_id: str | None = None) -> None:
-    """Background task: summarize and extract state after chat completes."""
+async def _background_post_chat(
+    session_id: str,
+    connection_id: str | None = None,
+    state_connection_id: str | None = None,
+    last_message_id: str | None = None,
+) -> None:
+    """Background task: summarize, extract state, and run hooks after chat completes."""
+    from app.services.hook_runner import run_hooks_for_event
+
+    async def _push(msg: WSMessageOut) -> None:
+        await _push_to_session(session_id, msg)
+
     try:
         branch_msgs = await get_branch_messages(session_id)
 
@@ -184,10 +199,30 @@ async def _background_post_chat(session_id: str, connection_id: str | None = Non
             await incremental_summarize(session_id, branch_msgs, connection_id=connection_id)
             await event_bus.emit("summary_complete", session_id=session_id)
 
+        # Run chat_complete hooks (before state extraction so they don't wait for it)
+        await run_hooks_for_event(
+            session_id=session_id,
+            trigger="chat_complete",
+            branch_msgs=branch_msgs,
+            state=None,
+            connection_id=connection_id,
+            push_fn=_push,
+        )
+
         # Extract state — use state_connection_id if specified, otherwise fall back to connection_id
         effective_state_conn = state_connection_id or connection_id
         state = await extract_state(session_id, branch_msgs, connection_id=effective_state_conn)
         await event_bus.emit("state_updated", session_id=session_id, data=state.model_dump())
+
+        # Run state_updated hooks (state is now available)
+        await run_hooks_for_event(
+            session_id=session_id,
+            trigger="state_updated",
+            branch_msgs=branch_msgs,
+            state=state,
+            connection_id=connection_id,
+            push_fn=_push,
+        )
 
     except Exception:
         log.exception("background_post_chat_failed", session_id=session_id)

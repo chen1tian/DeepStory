@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Message, TokenBudgetInfo, StateData, WSMessageOut } from "../types";
+import type { Message, TokenBudgetInfo, StateData, WSMessageOut, HookResultPayload } from "../types";
 import { ChatWebSocket } from "../services/websocket";
 import { getMessages, getState, deleteMessagesFrom as apiDeleteMessagesFrom } from "../services/api";
 
@@ -89,6 +89,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           break;
 
+        case "hook_result": {
+          if (msg.data) {
+            const payload = msg.data as unknown as HookResultPayload;
+            // Lazy import to avoid circular dep
+            import("./hookStore").then(({ useHookStore }) => {
+              useHookStore.getState().setResult(payload.hook_id, payload);
+            });
+          }
+          break;
+        }
+
         case "error":
           set({ error: msg.content || "Unknown error", isStreaming: false, streamingContent: "" });
           break;
@@ -127,6 +138,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...messages, userMsg], streamingContent: "", error: null });
+    // Clear previous hook results when a new message is sent
+    import("./hookStore").then(({ useHookStore }) => {
+      useHookStore.getState().clearResults();
+    });
     ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
   },
 
@@ -150,6 +165,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
+    // Clear previous hook results when a new message is sent
+    import("./hookStore").then(({ useHookStore }) => {
+      useHookStore.getState().clearResults();
+    });
     ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
   },
 

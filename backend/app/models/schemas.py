@@ -389,6 +389,64 @@ class UpdateSystemPromptRequest(BaseModel):
     preset_id: str | None = None
 
 
+# --- Chat Hook schemas ---
+
+class HookAction(BaseModel):
+    """What to do with the hook result on the frontend."""
+    type: str = "show_panel"
+    # type options:
+    #   render_branch_options - render selectable/editable branch option cards
+    #   show_panel            - collapsible markdown panel with optional title
+    #   inject_to_input       - fill the chat textarea with the result string
+    #   send_message          - auto-send result as a chat message
+    #   show_toast            - show a brief notification toast
+    #   custom_script         - run user-provided JS (context object passed in)
+    panel_title: str = ""       # used by show_panel
+    script: str = ""            # used by custom_script
+
+
+class ChatHook(BaseModel):
+    id: str
+    name: str = "未命名 Hook"
+    enabled: bool = True
+    trigger: str = "chat_complete"   # "chat_complete" | "state_updated"
+    context_messages: int = 6        # how many recent messages to include (0 = none)
+    include_state: bool = False      # whether to inject RPG state summary
+    prompt: str = ""                 # task instruction sent to LLM
+    response_key: str = ""           # JSON key name for this hook's result in the batched LLM response
+    response_schema: str = ""        # describes expected format e.g. "array of {label, prompt}"
+    action: HookAction = Field(default_factory=HookAction)
+    connection_id: str | None = None  # optional override; falls back to active connection
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateHookRequest(BaseModel):
+    name: str = "未命名 Hook"
+    enabled: bool = True
+    trigger: str = "chat_complete"
+    context_messages: int = 6
+    include_state: bool = False
+    prompt: str = ""
+    response_key: str = ""
+    response_schema: str = ""
+    action: HookAction = Field(default_factory=HookAction)
+    connection_id: str | None = None
+
+
+class UpdateHookRequest(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None
+    trigger: str | None = None
+    context_messages: int | None = None
+    include_state: bool | None = None
+    prompt: str | None = None
+    response_key: str | None = None
+    response_schema: str | None = None
+    action: HookAction | None = None
+    connection_id: str | None = None
+
+
 # --- API request/response schemas ---
 
 
@@ -428,7 +486,7 @@ class WSMessageIn(BaseModel):
 
 
 class WSMessageOut(BaseModel):
-    type: str  # "token" | "chat_complete" | "summary_progress" | "state_updated" | "error" | "pong"
+    type: str  # "token" | "chat_complete" | "summary_progress" | "state_updated" | "hook_result" | "error" | "pong"
     content: str = ""
     message_id: str = ""
     status: str = ""

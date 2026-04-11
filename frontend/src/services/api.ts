@@ -23,6 +23,9 @@ import type {
   Connection,
   CreateConnectionRequest,
   UpdateConnectionRequest,
+  ChatHook,
+  CreateHookRequest,
+  UpdateHookRequest,
 } from "../types";
 
 const BASE = "/api";
@@ -298,3 +301,13 @@ export const getDebugPrompt = (sessionId: string, userInput = "（调试预览�
     method: "POST",
     body: JSON.stringify({ user_input: userInput }),
   });
+
+// Hooks
+export const getHooks = () => request<ChatHook[]>("/hooks");
+export const getHook = (id: string) => request<ChatHook>(`/hooks/${id}`);
+export const createHook = (data: CreateHookRequest = {}) =>
+  request<ChatHook>("/hooks", { method: "POST", body: JSON.stringify(data) });
+export const updateHook = (id: string, data: UpdateHookRequest) =>
+  request<ChatHook>(`/hooks/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteHook = (id: string) =>
+  request<{ status: string }>(`/hooks/${id}`, { method: "DELETE" });

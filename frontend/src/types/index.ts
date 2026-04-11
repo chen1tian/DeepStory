@@ -223,6 +223,7 @@ export interface WSMessageIn {
   content?: string;
   branch_from_message_id?: string;
   connection_id?: string | null;
+  state_connection_id?: string | null;
 }
 
 export interface WSMessageOut {
@@ -231,6 +232,7 @@ export interface WSMessageOut {
     | "chat_complete"
     | "summary_progress"
     | "state_updated"
+    | "hook_result"
     | "error"
     | "pong"
     | "token_budget";
@@ -405,4 +407,70 @@ export interface UpdatePresetRequest {
   description?: string;
   content?: string;
   is_default?: boolean;
+}
+
+// --- Chat Hook system ---
+
+export type HookActionType =
+  | "render_branch_options"
+  | "show_panel"
+  | "inject_to_input"
+  | "send_message"
+  | "show_toast"
+  | "custom_script";
+
+export interface HookAction {
+  type: HookActionType;
+  panel_title: string;
+  script: string;
+}
+
+export interface ChatHook {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trigger: "chat_complete" | "state_updated";
+  context_messages: number;
+  include_state: boolean;
+  prompt: string;
+  response_key: string;
+  response_schema: string;
+  action: HookAction;
+  connection_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateHookRequest {
+  name?: string;
+  enabled?: boolean;
+  trigger?: "chat_complete" | "state_updated";
+  context_messages?: number;
+  include_state?: boolean;
+  prompt?: string;
+  response_key?: string;
+  response_schema?: string;
+  action?: Partial<HookAction>;
+  connection_id?: string | null;
+}
+
+export interface UpdateHookRequest {
+  name?: string;
+  enabled?: boolean;
+  trigger?: "chat_complete" | "state_updated";
+  context_messages?: number;
+  include_state?: boolean;
+  prompt?: string;
+  response_key?: string;
+  response_schema?: string;
+  action?: Partial<HookAction>;
+  connection_id?: string | null;
+}
+
+/** Payload inside WSMessageOut.data when type === "hook_result" */
+export interface HookResultPayload {
+  hook_id: string;
+  hook_name: string;
+  action: HookAction;
+  result: unknown;
 }

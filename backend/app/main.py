@@ -38,6 +38,8 @@ async def lifespan(app: FastAPI):
     presets_dir.mkdir(parents=True, exist_ok=True)
     connections_dir = settings.data_dir / "connections"
     connections_dir.mkdir(parents=True, exist_ok=True)
+    hooks_dir = settings.data_dir / "hooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
     log.info("app_startup", data_dir=str(settings.data_dir))
     yield
     # Shutdown
@@ -70,6 +72,7 @@ from app.api.presets import router as presets_router  # noqa: E402
 from app.api.connections import router as connections_router  # noqa: E402
 from app.api.debug import router as debug_router  # noqa: E402
 from app.api.characters import router as characters_router  # noqa: E402
+from app.api.hooks import router as hooks_router  # noqa: E402
 
 app.include_router(sessions_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
@@ -83,6 +86,7 @@ app.include_router(presets_router, prefix="/api")
 app.include_router(connections_router, prefix="/api")
 app.include_router(debug_router, prefix="/api")
 app.include_router(characters_router, prefix="/api")
+app.include_router(hooks_router, prefix="/api")
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402
