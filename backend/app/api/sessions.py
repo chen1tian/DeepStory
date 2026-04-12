@@ -40,9 +40,16 @@ async def create_session(req: CreateSessionRequest):
     opener_content: str | None = None
     story_title: str | None = None
 
-    # 1. Start with default preset as the base system prompt
-    default_preset_id, preset_content = await _get_default_preset()
-    active_preset_id = default_preset_id
+    # 1. Resolve preset: explicit > default
+    if req.preset_id:
+        preset_data = await load_preset(req.preset_id)
+        if preset_data:
+            active_preset_id = req.preset_id
+            preset_content = preset_data.get("content", "")
+        else:
+            active_preset_id, preset_content = await _get_default_preset()
+    else:
+        active_preset_id, preset_content = await _get_default_preset()
     if not system_prompt:
         system_prompt = preset_content
 

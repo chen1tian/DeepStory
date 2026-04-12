@@ -577,6 +577,7 @@ class CreateSessionRequest(BaseModel):
     opener_index: int = 0
     protagonist_id: str | None = None
     user_protagonist_id: str | None = None  # user protagonist (avatar)
+    preset_id: str | None = None  # explicit preset to apply
 
 
 class SessionResponse(BaseModel):

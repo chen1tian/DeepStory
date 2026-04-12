@@ -308,6 +308,7 @@ export interface CreateSessionRequest {
   protagonist_id?: string;
   user_protagonist_id?: string;
   connection_id?: string;
+  preset_id?: string;
 }
 
 // --- Connections ---

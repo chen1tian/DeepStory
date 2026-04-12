@@ -4,15 +4,16 @@ import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import { usePresetStore } from "../stores/presetStore";
 
 interface Props {
-  onSelect: (storyId: string, openerIndex: number) => void;
+  onSelect: (storyId: string, openerIndex: number, presetId?: string) => void;
   onSkip: (presetId?: string) => void;
   onCancel: () => void;
+  onManagePresets?: () => void;
 }
 
-export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
+export default function StorySelector({ onSelect, onSkip, onCancel, onManagePresets }: Props) {
   const { stories, loading, fetchStories } = useStoryStore();
   const { userProtagonists, fetchUserProtagonists } = useUserProtagonistStore();
-  const { presets, fetchPresets } = usePresetStore();
+  const { presets, loading: presetsLoading, fetchPresets } = usePresetStore();
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [selectedOpener, setSelectedOpener] = useState(0);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
@@ -23,6 +24,15 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
     fetchPresets();
   }, [fetchStories, fetchUserProtagonists, fetchPresets]);
 
+  // Auto-select default preset (or first) when presets load
+  useEffect(() => {
+    if (presets.length > 0 && !selectedPresetId) {
+      const def = presets.find((p) => p.is_default) || presets[0];
+      setSelectedPresetId(def.id);
+    }
+  }, [presets, selectedPresetId]);
+
+  const noPresets = !presetsLoading && presets.length === 0;
   const selectedStory = stories.find((s) => s.id === selectedStoryId);
   const boundProtagonist = selectedStory?.protagonist_id
     ? userProtagonists.find((p) => p.id === selectedStory.protagonist_id)
@@ -42,7 +52,6 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
                 value={selectedPresetId || ""}
                 onChange={(e) => setSelectedPresetId(e.target.value || null)}
               >
-                <option value="">默认</option>
                 {presets.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}{p.is_default ? " ★" : ""}
@@ -52,8 +61,9 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
             </div>
           )}
           <button
-            className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors"
+            className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={() => onSkip(selectedPresetId || undefined)}
+            disabled={noPresets}
           >
             跳过，自由对话
           </button>
@@ -65,32 +75,30 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
           </button>
         </div>
 
+        {noPresets && (
+          <div className="mx-4 mt-4 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-3">
+            <span className="text-amber-400 text-lg">⚠️</span>
+            <span className="text-[13px] text-amber-300 flex-1">开始对话前必须先创建一个预设，用于定义 AI 的角色与行为风格。</span>
+            {onManagePresets && (
+              <button
+                className="shrink-0 bg-amber-500 hover:bg-amber-400 text-white px-3 py-1.5 rounded-lg text-[13px] cursor-pointer border-none transition-colors"
+                onClick={onManagePresets}
+              >
+                📝 创建预设
+              </button>
+            )}
+          </div>
+        )}
         {loading ? (
           <div className="text-sm text-[var(--text-secondary)] p-5">加载中…</div>
         ) : stories.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-4 p-8 text-[var(--text-secondary)]">
             <div className="text-4xl opacity-30">📚</div>
             <p className="text-sm">还没有故事，先去故事管理中创建吧</p>
-            {presets.length > 0 && (
-              <div className="flex items-center gap-2 mb-3">
-                <label className="text-[13px]">选择预设：</label>
-                <select
-                  className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none"
-                  value={selectedPresetId || ""}
-                  onChange={(e) => setSelectedPresetId(e.target.value || null)}
-                >
-                  <option value="">默认</option>
-                  {presets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}{p.is_default ? " ★" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <button
-              className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors"
+              className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => onSkip(selectedPresetId || undefined)}
+              disabled={noPresets}
             >
               直接开始自由对话
             </button>
@@ -183,8 +191,9 @@ export default function StorySelector({ onSelect, onSkip, onCancel }: Props) {
                 )}
 
                 <button
-                  className="mt-auto bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer border-none transition-colors"
-                  onClick={() => onSelect(selectedStory.id, selectedOpener)}
+                  className="mt-auto bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer border-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => onSelect(selectedStory.id, selectedOpener, selectedPresetId || undefined)}
+                  disabled={noPresets}
                 >
                   🚀 开始对话
                 </button>

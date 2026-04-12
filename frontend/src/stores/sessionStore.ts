@@ -14,7 +14,7 @@ interface SessionState {
   loading: boolean;
 
   fetchSessions: () => Promise<void>;
-  addSession: (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string) => Promise<Session>;
+  addSession: (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string, presetId?: string) => Promise<Session>;
   removeSession: (id: string) => Promise<void>;  // permanent delete
   closeTab: (id: string) => void;                 // close tab only
   openTab: (id: string) => void;                  // reopen from history
@@ -73,13 +73,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
-  addSession: async (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string) => {
+  addSession: async (title?: string, storyId?: string, openerIndex?: number, protagonistId?: string, systemPrompt?: string, presetId?: string) => {
     const session = await createSession({
       title: title || "新的对话",
       system_prompt: systemPrompt,
       story_id: storyId,
       opener_index: openerIndex,
       protagonist_id: protagonistId,
+      preset_id: presetId,
     });
     localStorage.setItem(LAST_SESSION_KEY, session.id);
     set((s) => {

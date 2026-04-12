@@ -23,6 +23,35 @@ from app.storage.file_storage import list_sessions, read_json, write_json
 router = APIRouter(tags=["presets"])
 
 
+async def _apply_default_preset_to_unlinked(pid: str, content: str) -> None:
+    """将默认预设应用到尚未关联任何预设的 session。
+    - 若 system_prompt 为空：直接设置为预设内容
+    - 若 system_prompt 有内容（如故事背景）：将预设内容前置拼接，保留原有内容
+    """
+    now = datetime.now().isoformat()
+    sessions = await list_sessions()
+
+    async def _set(session: dict) -> None:
+        # 已关联了某个预设（非空、非 None），跳过
+        if session.get("preset_id"):
+            return
+        sid = session["id"]
+        session_data = await read_json(sid, "session.json")
+        if session_data is None:
+            return
+        existing = session_data.get("system_prompt", "") or ""
+        if existing:
+            # 前置拼接：预设 + 原有内容（故事背景等）
+            session_data["system_prompt"] = content + "\n\n" + existing
+        else:
+            session_data["system_prompt"] = content
+        session_data["preset_id"] = pid
+        session_data["updated_at"] = now
+        await write_json(sid, "session.json", session_data)
+
+    await asyncio.gather(*[_set(s) for s in sessions])
+
+
 @router.post("/presets", response_model=Preset)
 async def create_preset(req: CreatePresetRequest):
     pid = str(uuid.uuid4())
@@ -41,6 +70,11 @@ async def create_preset(req: CreatePresetRequest):
         updated_at=now,
     )
     await save_preset(pid, p.model_dump())
+
+    # 新建即为默认且有内容时，注入到无预设的 session
+    if req.is_default and req.content:
+        await _apply_default_preset_to_unlinked(pid, req.content)
+
     return p
 
 
@@ -91,6 +125,10 @@ async def update_preset(pid: str, req: UpdatePresetRequest):
             await write_json(sid, "session.json", session_data)
 
         await asyncio.gather(*[_sync_session(s) for s in sessions])
+
+    # 设置为默认时，将预设注入到尚未关联任何预设且提示词为空的 session
+    if updates.get("is_default") and data.get("content"):
+        await _apply_default_preset_to_unlinked(pid, data["content"])
 
     return Preset(**data)
 

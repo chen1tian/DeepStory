@@ -141,20 +141,15 @@ function MainApp() {
 
   const handleNewSession = () => setShowStorySelector(true);
 
-  const handleStorySelect = async (storyId: string, openerIndex: number) => {
+  const handleStorySelect = async (storyId: string, openerIndex: number, presetId?: string) => {
     setShowStorySelector(false);
-    const session = await addSession(undefined, storyId, openerIndex);
+    const session = await addSession(undefined, storyId, openerIndex, undefined, undefined, presetId);
     connectToSession(session.id);
   };
 
   const handleSkipStory = async (presetId?: string) => {
     setShowStorySelector(false);
-    let systemPrompt: string | undefined;
-    if (presetId) {
-      const preset = usePresetStore.getState().presets.find((p) => p.id === presetId);
-      systemPrompt = preset?.content;
-    }
-    const session = await addSession(undefined, undefined, undefined, undefined, systemPrompt);
+    const session = await addSession(undefined, undefined, undefined, undefined, undefined, presetId);
     connectToSession(session.id);
   };
 
@@ -203,6 +198,7 @@ function MainApp() {
           onSelect={handleStorySelect}
           onSkip={handleSkipStory}
           onCancel={() => setShowStorySelector(false)}
+          onManagePresets={() => { setShowStorySelector(false); setShowPresetManager(true); }}
         />
       )}
 
