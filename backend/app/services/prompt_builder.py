@@ -47,8 +47,18 @@ async def build_chat_messages(
     if user_protagonist:
         pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
         psetting = user_protagonist.get("setting", "") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "setting", "")
+        protagonist_block = (
+            f"【玩家主角 - {pname}】\n"
+            f"用户正在扮演角色「{pname}」。用户发送的每一条消息，都代表「{pname}」的行动、话语或意图，请将其视为第一人称主角视角。\n"
+            f"你的职责是世界叙事者：描述「{pname}」行动后的环境反应、NPC 对话与场景变化，推动故事发展。\n"
+            f"重要原则：\n"
+            f"- 「{pname}」是玩家操控的主角，不是 NPC，不要主动替玩家描写「{pname}」主动采取了哪些行动\n"
+            f"- 等待用户描述「{pname}」做什么，然后再作出世界的反应\n"
+            f"- 以第三人称叙述视角描述世界对「{pname}」行动的反馈"
+        )
         if psetting:
-            system_prompt = system_prompt + f"\n\n【主角设定 - {pname}】\n{psetting}"
+            protagonist_block += f"\n\n「{pname}」的角色背景与设定：\n{psetting}"
+        system_prompt = system_prompt + "\n\n" + protagonist_block
 
     # Append session characters / NPC cast to system prompt
     if characters:
@@ -186,6 +196,12 @@ async def build_chat_messages(
         messages.append({"role": msg.role, "content": msg.content})
 
     messages.append({"role": "user", "content": user_input})
+
+    # If user protagonist is set, label the user message with their character name
+    # so the LLM receives a clear signal about who is speaking
+    if user_protagonist:
+        pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
+        messages[-1] = {"role": "user", "content": f"[{pname}] {user_input}"}
 
     budget_info = {
         "total": total_budget,
