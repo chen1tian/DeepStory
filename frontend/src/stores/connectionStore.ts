@@ -75,7 +75,12 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
             localStorage.removeItem("activeConnectionId");
         }
       }
-      return { connections: newConnections, activeConnectionId: newActive };
+      const updates: Partial<ConnectionState> = { connections: newConnections, activeConnectionId: newActive };
+      if (s.stateConnectionId === id) {
+        localStorage.removeItem("stateConnectionId");
+        updates.stateConnectionId = null;
+      }
+      return updates;
     });
   },
 

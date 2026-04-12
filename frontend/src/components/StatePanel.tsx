@@ -124,9 +124,14 @@ export default function StatePanel() {
   const [activeTab, setActiveTab] = useState<"chars" | "inv" | "scene" | "quest" | "log">("chars");
   const [savingName, setSavingName] = useState<string | null>(null);
 
-  const { connections, stateConnectionId, setStateConnectionId } = useConnectionStore();
+  const { connections, stateConnectionId, setStateConnectionId, fetchConnections } = useConnectionStore();
   const [connDropdownOpen, setConnDropdownOpen] = useState(false);
   const connDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Ensure connections are loaded when panel opens (handles backend-not-ready-at-startup case)
+  useEffect(() => {
+    fetchConnections();
+  }, [fetchConnections]);
 
   // Close dropdown on outside click
   useEffect(() => {
