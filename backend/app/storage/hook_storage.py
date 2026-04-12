@@ -9,12 +9,13 @@ import aiofiles
 import structlog
 
 from app.config import settings
+from app.storage.base import get_data_dir
 
 log = structlog.get_logger()
 
 
 def _hooks_dir() -> Path:
-    d = settings.data_dir / "hooks"
+    d = get_data_dir() / "hooks"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useSessionStore } from "./stores/sessionStore";
 import { useUIStore } from "./stores/uiStore";
 import { useChatStore } from "./stores/chatStore";
 import { usePresetStore } from "./stores/presetStore";
 import { useNarratorStore } from "./stores/narratorStore";
+import { useAuthStore } from "./stores/authStore";
+import LoginPage from "./components/LoginPage";
+import RegisterPage from "./components/RegisterPage";
 import SessionList from "./components/SessionList";
 import ChatView from "./components/ChatView";
 import EditMode from "./components/EditMode";
@@ -48,6 +52,31 @@ function Toasts() {
 }
 
 export default function App() {
+  const restoreFromStorage = useAuthStore((s) => s.restoreFromStorage);
+  useEffect(() => {
+    restoreFromStorage();
+  }, [restoreFromStorage]);
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/*" element={<ProtectedRoute />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function ProtectedRoute() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
   const fetchSessions = useSessionStore((s) => s.fetchSessions);
   const addSession = useSessionStore((s) => s.addSession);
   const connectToSession = useChatStore((s) => s.connectToSession);
@@ -57,6 +86,8 @@ export default function App() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleEditMode = useUIStore((s) => s.toggleEditMode);
   const toggleStatePanel = useUIStore((s) => s.toggleStatePanel);
+  const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
 
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
 
@@ -260,6 +291,15 @@ export default function App() {
             title="故事导演"
           >
             <span className="text-[14px]">🎬</span> 导演
+          </button>
+          <div className="h-4 w-px bg-white/10 mx-1.5" />
+          <span className="text-[12px] text-[var(--text-secondary)] hidden lg:block">{user?.username}</span>
+          <button
+            onClick={logout}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
+            title="退出登录"
+          >
+            <span className="text-[14px]">🚪</span> 退出
           </button>
         </div>
 

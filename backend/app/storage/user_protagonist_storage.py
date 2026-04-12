@@ -9,12 +9,13 @@ import aiofiles
 import structlog
 
 from app.config import settings
+from app.storage.base import get_data_dir
 
 log = structlog.get_logger()
 
 
 def _user_protagonists_dir() -> Path:
-    d = settings.data_dir / "user_protagonists"
+    d = get_data_dir() / "user_protagonists"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

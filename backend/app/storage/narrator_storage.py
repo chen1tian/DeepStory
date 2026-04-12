@@ -9,12 +9,13 @@ import aiofiles
 import structlog
 
 from app.config import settings
+from app.storage.base import get_data_dir
 
 log = structlog.get_logger()
 
 
 def _session_dir(session_id: str) -> Path:
-    d = settings.data_dir / "sessions" / session_id
+    d = get_data_dir() / "sessions" / session_id
     d.mkdir(parents=True, exist_ok=True)
     return d
 

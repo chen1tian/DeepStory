@@ -39,11 +39,26 @@ import type {
 
 const BASE = "/api";
 
+function getToken(): string | null {
+  // Read directly from localStorage to avoid circular import with store
+  const token = localStorage.getItem("auth_token");
+  return token;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...init,
   });
+  if (res.status === 401) {
+    // Token expired or invalid — force logout
+    localStorage.removeItem("auth_token");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);

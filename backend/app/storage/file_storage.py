@@ -12,6 +12,7 @@ import aiofiles
 import structlog
 
 from app.config import settings
+from app.storage.base import get_data_dir
 
 log = structlog.get_logger()
 
@@ -34,7 +35,7 @@ def _validate_session_id(session_id: str) -> None:
 
 def _session_dir(session_id: str) -> Path:
     _validate_session_id(session_id)
-    return settings.data_dir / "sessions" / session_id
+    return get_data_dir() / "sessions" / session_id
 
 
 async def _atomic_write(path: Path, data: str) -> None:
@@ -83,7 +84,7 @@ async def write_text(session_id: str, filename: str, content: str) -> None:
 
 
 async def list_sessions() -> list[dict]:
-    sessions_dir = settings.data_dir / "sessions"
+    sessions_dir = get_data_dir() / "sessions"
     if not sessions_dir.exists():
         return []
     result = []

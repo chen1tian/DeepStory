@@ -23,6 +23,9 @@ from app.services.llm_service import chat_completion_stream
 from app.services.summarizer import should_summarize, incremental_summarize, extract_state
 from app.services.event_bus import event_bus
 from app.storage.user_protagonist_storage import load_user_protagonist
+from app.services.auth_service import decode_access_token
+from app.storage.base import set_user_id
+from app.storage.user_storage import get_user_by_id
 
 log = structlog.get_logger()
 
@@ -66,7 +69,19 @@ event_bus.on("state_updated", _on_state_updated)
 
 
 @ws_router.websocket("/ws/chat/{session_id}")
-async def websocket_chat(ws: WebSocket, session_id: str):
+async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(default="")):
+    # Authenticate via query param token
+    payload = decode_access_token(token) if token else None
+    if payload is None:
+        await ws.close(code=4001, reason="Unauthorized")
+        return
+    user_id = payload.get("sub", "")
+    user = await get_user_by_id(user_id)
+    if user is None:
+        await ws.close(code=4001, reason="Unauthorized")
+        return
+    set_user_id(user["id"])
+
     session = await load_session(session_id)
     if session is None:
         await ws.close(code=4004, reason="Session not found")

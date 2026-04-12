@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # WebSocket
     ws_heartbeat_interval: int = 30
 
+    # Auth
+    jwt_secret_key: str = "change-me-to-a-random-secret-in-production"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 10080  # 7 days
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "protected_namespaces": ("settings_",)}
 
 

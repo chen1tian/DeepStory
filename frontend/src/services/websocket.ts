@@ -14,7 +14,8 @@ export class ChatWebSocket {
 
   constructor(sessionId: string) {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    this.url = `${proto}//${location.host}/ws/chat/${sessionId}`;
+    const token = localStorage.getItem("auth_token") ?? "";
+    this.url = `${proto}//${location.host}/ws/chat/${sessionId}?token=${encodeURIComponent(token)}`;
   }
 
   connect(): void {

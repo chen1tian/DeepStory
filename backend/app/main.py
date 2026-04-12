@@ -2,10 +2,12 @@ import logging
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.deps import get_current_user
 from app.config import settings
+from app.storage.user_storage import init_db
 
 structlog.configure(
     processors=[
@@ -41,6 +43,7 @@ async def lifespan(app: FastAPI):
     hooks_dir = settings.data_dir / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
     log.info("app_startup", data_dir=str(settings.data_dir))
+    await init_db()
     yield
     # Shutdown
     from app.services.event_bus import event_bus
@@ -60,6 +63,7 @@ app.add_middleware(
 )
 
 # Mount routers
+from app.api.auth import router as auth_router  # noqa: E402
 from app.api.sessions import router as sessions_router  # noqa: E402
 from app.api.chat import router as chat_router  # noqa: E402
 from app.api.state import router as state_router  # noqa: E402
@@ -75,25 +79,26 @@ from app.api.characters import router as characters_router  # noqa: E402
 from app.api.hooks import router as hooks_router  # noqa: E402
 from app.api.narrator import router as narrator_router  # noqa: E402
 
-app.include_router(sessions_router, prefix="/api")
-app.include_router(chat_router, prefix="/api")
-app.include_router(state_router, prefix="/api")
-app.include_router(editor_router, prefix="/api")
-app.include_router(stories_router, prefix="/api")
-app.include_router(ai_router, prefix="/api")
-app.include_router(protagonists_router, prefix="/api")
-app.include_router(user_protagonists_router, prefix="/api")
-app.include_router(presets_router, prefix="/api")
-app.include_router(connections_router, prefix="/api")
-app.include_router(debug_router, prefix="/api")
-app.include_router(characters_router, prefix="/api")
-app.include_router(hooks_router, prefix="/api")
-app.include_router(narrator_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(chat_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(state_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(editor_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(stories_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(ai_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(protagonists_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(user_protagonists_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(presets_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(connections_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(debug_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(characters_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(hooks_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(narrator_router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402
 
 app.include_router(ws_router)
+app.include_router(auth_router, prefix="/api/auth")
 
 
 @app.get("/api/health")
