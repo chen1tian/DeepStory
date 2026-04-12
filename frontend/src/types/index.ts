@@ -242,7 +242,7 @@ export interface TokenBudgetInfo {
 // --- WebSocket messages ---
 
 export interface WSMessageIn {
-  type: "chat" | "chat_from_branch" | "ping";
+  type: "chat" | "chat_from_branch" | "ping" | "submit_turn" | "retract_turn" | "force_submit";
   content?: string;
   branch_from_message_id?: string;
   connection_id?: string | null;
@@ -259,11 +259,40 @@ export interface WSMessageOut {
     | "narrator_update"
     | "error"
     | "pong"
-    | "token_budget";
+    | "token_budget"
+    | "room_state"
+    | "round_processing"
+    | "round_started";
   content?: string;
   message_id?: string;
   status?: string;
   data?: Record<string, unknown>;
+}
+
+// --- Multiplayer Room ---
+
+export interface PlayerInfo {
+  user_id: string;
+  username: string;
+  is_host: boolean;
+  is_online: boolean;
+  has_submitted: boolean;
+}
+
+export interface RoomState {
+  room_code: string;
+  session_id: string;
+  host_user_id: string;
+  players: PlayerInfo[];
+  pending_turns: Record<string, string>;
+  round_status: "collecting" | "processing";
+}
+
+export interface CreateRoomResponse extends RoomState {}
+
+export interface JoinRoomResponse {
+  session_id: string;
+  room_state: RoomState;
 }
 
 // --- API request/response ---

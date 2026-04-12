@@ -6,6 +6,7 @@ import { useChatStore } from "./stores/chatStore";
 import { usePresetStore } from "./stores/presetStore";
 import { useNarratorStore } from "./stores/narratorStore";
 import { useAuthStore } from "./stores/authStore";
+import { useRoomStore } from "./stores/roomStore";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import SessionList from "./components/SessionList";
@@ -26,6 +27,8 @@ import DebugPanel from "./components/DebugPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import HookManager from "./components/HookManager";
 import MapOverlay from "./components/MapDisplay";
+import CreateRoomModal from "./components/CreateRoomModal";
+import JoinRoomModal from "./components/JoinRoomModal";
 import "./styles/global.css";
 
 function Toasts() {
@@ -70,6 +73,10 @@ export default function App() {
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const initialized = useAuthStore((s) => s.initialized);
+  if (!initialized) {
+    return null;
+  }
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -101,11 +108,14 @@ function MainApp() {
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showHookManager, setShowHookManager] = useState(false);
   const [showArcEditor, setShowArcEditor] = useState(false);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [showJoinRoom, setShowJoinRoom] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<"state" | "narrator">("state");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const loadArc = useNarratorStore((s) => s.loadArc);
   const arc = useNarratorStore((s) => s.arc);
+  const roomState = useRoomStore((s) => s.roomState);
 
   const sessions = useSessionStore((s) => s.sessions);
 
@@ -183,8 +193,13 @@ function MainApp() {
       {showArcEditor && currentSessionId && (
         <ArcEditor sessionId={currentSessionId} onClose={() => setShowArcEditor(false)} />
       )}
-      {showStorySelector && (
-        <StorySelector
+      {showCreateRoom && currentSessionId && (
+        <CreateRoomModal sessionId={currentSessionId} onClose={() => setShowCreateRoom(false)} />
+      )}
+      {showJoinRoom && (
+        <JoinRoomModal onClose={() => setShowJoinRoom(false)} />
+      )}
+      {showStorySelector && (        <StorySelector
           onSelect={handleStorySelect}
           onSkip={handleSkipStory}
           onCancel={() => setShowStorySelector(false)}
@@ -278,6 +293,24 @@ function MainApp() {
             title="Chat Hook 管理"
           >
             <span className="text-[14px]">🔗</span> Hooks
+          </button>
+          {/* Multiplayer buttons */}
+          {!roomState && currentSessionId && (
+            <button
+              onClick={() => setShowCreateRoom(true)}
+              className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
+              title="创建多人房间"
+            >
+              <span className="text-[14px]">🎲</span> 多人
+            </button>
+          )}
+          <button
+            onClick={() => setShowJoinRoom(true)}
+            disabled={!!roomState}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 disabled:opacity-30 transition-all flex items-center gap-1.5 border border-transparent"
+            title="加入多人房间"
+          >
+            <span className="text-[14px]">🚪</span> 加入
           </button>
           <button
             className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${

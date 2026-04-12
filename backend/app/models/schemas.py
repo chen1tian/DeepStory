@@ -619,6 +619,38 @@ class EditorGenerateRequest(BaseModel):
     connection_id: str | None = None
 
 
+# --- Multiplayer Room schemas ---
+
+class PlayerInfo(BaseModel):
+    user_id: str
+    username: str
+    is_host: bool = False
+    is_online: bool = True
+    has_submitted: bool = False
+
+
+class RoomState(BaseModel):
+    room_code: str
+    session_id: str
+    host_user_id: str
+    players: list[PlayerInfo] = Field(default_factory=list)
+    pending_turns: dict[str, str] = Field(default_factory=dict)  # user_id -> content
+    round_status: str = "collecting"  # "collecting" | "processing"
+
+
+class CreateRoomRequest(BaseModel):
+    session_id: str
+
+
+class JoinRoomRequest(BaseModel):
+    room_code: str
+
+
+class JoinRoomResponse(BaseModel):
+    session_id: str
+    room_state: RoomState
+
+
 class TokenBudgetInfo(BaseModel):
     total: int
     system_prompt: int = 0

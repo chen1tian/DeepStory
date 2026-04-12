@@ -24,6 +24,10 @@ interface ChatState {
   loadMessages: (sessionId: string) => Promise<void>;
   loadState: (sessionId: string) => Promise<void>;
   clearError: () => void;
+  // Room actions
+  submitTurn: (content: string) => void;
+  retractTurn: () => void;
+  forceSubmit: () => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -111,6 +115,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           break;
         }
+
+        case "room_state":
+        case "round_processing":
+          import("./roomStore").then(({ useRoomStore }) => {
+            useRoomStore.getState().handleRoomMessage(msg);
+          });
+          break;
+
+        case "round_started":
+          import("./roomStore").then(({ useRoomStore }) => {
+            useRoomStore.getState().handleRoomMessage(msg);
+          });
+          // Reload messages so the combined user turn appears
+          get().loadMessages(sessionId);
+          break;
 
         case "error":
           set({ error: msg.content || "Unknown error", isStreaming: false, streamingContent: "" });
@@ -235,5 +254,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
     ws.send({ type: "chat", content: message.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+  },
+
+  submitTurn: (content: string) => {
+    const { ws } = get();
+    if (!ws) return;
+    ws.send({ type: "submit_turn", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+  },
+
+  retractTurn: () => {
+    const { ws } = get();
+    if (!ws) return;
+    ws.send({ type: "retract_turn", content: "" });
+  },
+
+  forceSubmit: () => {
+    const { ws } = get();
+    if (!ws) return;
+    ws.send({ type: "force_submit", content: "", connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
   },
 }));

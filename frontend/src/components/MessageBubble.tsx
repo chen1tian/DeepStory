@@ -14,6 +14,35 @@ interface Props {
   onConfirmCancel?: () => void;
 }
 
+/** Parse combined multiplayer turns like "[Alice]: hello\n[Bob]: world" */
+function parseMultiplayerTurns(content: string): { name: string; text: string }[] | null {
+  const lines = content.split("\n");
+  const turns: { name: string; text: string }[] = [];
+  let current: { name: string; lines: string[] } | null = null;
+  for (const line of lines) {
+    const m = line.match(/^\[([^\]]+)\]:\s*(.*)/);
+    if (m) {
+      if (current) turns.push({ name: current.name, text: current.lines.join("\n").trim() });
+      current = { name: m[1], lines: [m[2]] };
+    } else if (current) {
+      current.lines.push(line);
+    } else {
+      return null; // Not a multiplayer message
+    }
+  }
+  if (current) turns.push({ name: current.name, text: current.lines.join("\n").trim() });
+  return turns.length > 1 ? turns : null; // Only parse if 2+ players
+}
+
+const PLAYER_COLORS = [
+  "bg-indigo-600 ring-indigo-500/30",
+  "bg-violet-600 ring-violet-500/30",
+  "bg-sky-600 ring-sky-500/30",
+  "bg-teal-600 ring-teal-500/30",
+  "bg-rose-600 ring-rose-500/30",
+  "bg-amber-600 ring-amber-500/30",
+];
+
 export default function MessageBubble({
   message, isStreaming, isPendingDelete, isConfirming,
   onBranch, onDelete, onResend, onConfirmStart, onConfirmCancel,
@@ -21,6 +50,9 @@ export default function MessageBubble({
   const isUser = message.role === "user";
 
   const hasActions = (onBranch || onDelete || (onResend && isUser)) && !isStreaming;
+
+  // Multi-player aggregated message
+  const multiTurns = isUser ? parseMultiplayerTurns(message.content) : null;
 
   return (
     <div
@@ -32,31 +64,46 @@ export default function MessageBubble({
       onMouseLeave={() => onConfirmCancel?.()}
     >
       {/* 气泡本体 */}
-      <div
-        className={`relative px-2 py-2 max-w-[92%] md:max-w-[80%] text-[15px] leading-[1.8] break-words transition-all ${
-          isPendingDelete
-            ? isUser
-              ? "bg-red-900/30 text-red-100 rounded-xl rounded-tr-sm border border-red-500/40"
-              : "bg-red-950/20 text-gray-300 border border-red-500/30 rounded-xl rounded-tl-sm"
-            : isUser
-              ? "bg-blue-600 text-white rounded-xl rounded-tr-sm shadow-sm ring-1 ring-inset ring-white/10"
-              : "bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-xl rounded-tl-sm shadow-sm ring-1 ring-inset ring-white/5 hover:bg-white/[0.04] hover:ring-white/10"
-        }`}
-      >
-        {isUser ? (
-          <div className="whitespace-pre-wrap">{message.content}</div>
-        ) : (
-          <div
-            className={`prose prose-invert prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0 prose-pre:my-2 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md max-w-none ${
-              isStreaming ? "streaming-cursor" : ""
-            }`}
-          >
-            <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-              {message.content}
-            </ReactMarkdown>
-          </div>
-        )}
-      </div>
+      {multiTurns ? (
+        <div className="flex flex-col gap-2 max-w-[92%] md:max-w-[80%]">
+          {multiTurns.map((turn, i) => (
+            <div key={i} className="flex flex-col items-end">
+              <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">{turn.name}</span>
+              <div
+                className={`relative px-3 py-2 text-[15px] leading-[1.8] break-words whitespace-pre-wrap text-white rounded-xl rounded-tr-sm shadow-sm ring-1 ring-inset ${PLAYER_COLORS[i % PLAYER_COLORS.length]}`}
+              >
+                {turn.text}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          className={`relative px-2 py-2 max-w-[92%] md:max-w-[80%] text-[15px] leading-[1.8] break-words transition-all ${
+            isPendingDelete
+              ? isUser
+                ? "bg-red-900/30 text-red-100 rounded-xl rounded-tr-sm border border-red-500/40"
+                : "bg-red-950/20 text-gray-300 border border-red-500/30 rounded-xl rounded-tl-sm"
+              : isUser
+                ? "bg-blue-600 text-white rounded-xl rounded-tr-sm shadow-sm ring-1 ring-inset ring-white/10"
+                : "bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-xl rounded-tl-sm shadow-sm ring-1 ring-inset ring-white/5 hover:bg-white/[0.04] hover:ring-white/10"
+          }`}
+        >
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          ) : (
+            <div
+              className={`prose prose-invert prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0 prose-pre:my-2 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md max-w-none ${
+                isStreaming ? "streaming-cursor" : ""
+              }`}
+            >
+              <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 操作栏 */}
       {hasActions && (

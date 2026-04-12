@@ -148,6 +148,91 @@ export default function StatePanel() {
     ? connections.find((c) => c.id === stateConnectionId)
     : null;
 
+  const connSelector = (
+    <div style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+      <span style={{ color: "var(--text-secondary)", flexShrink: 0 }}>状态连接:</span>
+      <div ref={connDropdownRef} style={{ position: "relative", flex: 1 }}>
+        <button
+          onClick={() => setConnDropdownOpen((o) => !o)}
+          style={{
+            width: "100%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            padding: "3px 8px",
+            fontSize: 12,
+            color: activeStateConn ? "var(--text-primary)" : "var(--text-secondary)",
+            cursor: "pointer",
+            textAlign: "left",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{activeStateConn ? activeStateConn.name : "跟随对话连接"}</span>
+          <span style={{ fontSize: 10 }}>▾</span>
+        </button>
+        {connDropdownOpen && (
+          <div style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "var(--bg-elevated, var(--bg-secondary))",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            zIndex: 100,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            marginTop: 2,
+          }}>
+            <div
+              onClick={() => { setStateConnectionId(null); setConnDropdownOpen(false); }}
+              style={{
+                padding: "6px 10px",
+                cursor: "pointer",
+                fontSize: 12,
+                color: !activeStateConn ? "var(--accent)" : "var(--text-secondary)",
+                background: !activeStateConn ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover, rgba(255,255,255,0.05))")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = !activeStateConn ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent")}
+            >
+              跟随对话连接
+            </div>
+            {connections.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => { setStateConnectionId(c.id); setConnDropdownOpen(false); }}
+                style={{
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: stateConnectionId === c.id ? "var(--accent)" : "var(--text-primary)",
+                  background: stateConnectionId === c.id ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover, rgba(255,255,255,0.05))")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = stateConnectionId === c.id ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent")}
+              >
+                {c.name}{c.is_default ? " ★" : ""}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (!stateData) {
+    return (
+      <div>
+        {connSelector}
+        <div style={{ padding: 16, color: "var(--text-secondary)", fontSize: 13 }}>
+          暂无状态数据，对话开始后将自动提取
+        </div>
+      </div>
+    );
+  }
+
   const handleSaveToPool = async (char: RPGCharacter) => {
     setSavingName(char.name);
     try {
@@ -161,14 +246,6 @@ export default function StatePanel() {
     }
   };
 
-  if (!stateData) {
-    return (
-      <div style={{ padding: 16, color: "var(--text-secondary)", fontSize: 13 }}>
-        暂无状态数据，对话开始后将自动提取
-      </div>
-    );
-  }
-
   const rpg = stateData.rpg;
   const hasRPG = rpg && (rpg.characters.length > 0 || rpg.scene.location || rpg.inventory.length > 0);
 
@@ -176,6 +253,7 @@ export default function StatePanel() {
     // Legacy display fallback
     return (
       <div>
+        {connSelector}
         <div className="mb-5">
           <h3>👥 角色</h3>
           {stateData.characters.map((c, i) => (
@@ -198,78 +276,7 @@ export default function StatePanel() {
 
   return (
     <div>
-      {/* State extraction connection selector */}
-      <div style={{ padding: "6px 8px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-        <span style={{ color: "var(--text-secondary)", flexShrink: 0 }}>状态连接:</span>
-        <div ref={connDropdownRef} style={{ position: "relative", flex: 1 }}>
-          <button
-            onClick={() => setConnDropdownOpen((o) => !o)}
-            style={{
-              width: "100%",
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              padding: "3px 8px",
-              fontSize: 12,
-              color: activeStateConn ? "var(--text-primary)" : "var(--text-secondary)",
-              cursor: "pointer",
-              textAlign: "left",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span>{activeStateConn ? activeStateConn.name : "跟随对话连接"}</span>
-            <span style={{ fontSize: 10 }}>▾</span>
-          </button>
-          {connDropdownOpen && (
-            <div style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              background: "var(--bg-elevated, var(--bg-secondary))",
-              border: "1px solid var(--border)",
-              borderRadius: 4,
-              zIndex: 100,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-              marginTop: 2,
-            }}>
-              <div
-                onClick={() => { setStateConnectionId(null); setConnDropdownOpen(false); }}
-                style={{
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  color: !activeStateConn ? "var(--accent)" : "var(--text-secondary)",
-                  background: !activeStateConn ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover, rgba(255,255,255,0.05))")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = !activeStateConn ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent")}
-              >
-                跟随对话连接
-              </div>
-              {connections.map((c) => (
-                <div
-                  key={c.id}
-                  onClick={() => { setStateConnectionId(c.id); setConnDropdownOpen(false); }}
-                  style={{
-                    padding: "6px 10px",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    color: stateConnectionId === c.id ? "var(--accent)" : "var(--text-primary)",
-                    background: stateConnectionId === c.id ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover, rgba(255,255,255,0.05))")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = stateConnectionId === c.id ? "var(--bg-hover, rgba(255,255,255,0.05))" : "transparent")}
-                >
-                  {c.name}{c.is_default ? " ★" : ""}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {connSelector}
 
       {/* Tab navigation */}
       <div className="flex gap-0.5 mb-3 border-b border-[var(--border)] pb-2">

@@ -7,6 +7,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  initialized: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -17,6 +18,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  initialized: false,
 
   restoreFromStorage: () => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -30,6 +32,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             token,
             user: { id: payload.sub, username: payload.username, created_at: "" },
             isAuthenticated: true,
+            initialized: true,
           });
           return;
         }
@@ -38,6 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       localStorage.removeItem(TOKEN_KEY);
     }
+    set({ initialized: true });
   },
 
   login: async (username, password) => {

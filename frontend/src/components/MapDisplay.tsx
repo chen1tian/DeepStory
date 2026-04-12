@@ -150,7 +150,12 @@ export default function MapOverlay() {
 
     fetch(`/api/sessions/${currentSessionId}/map/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("auth_token")
+          ? { Authorization: `Bearer ${localStorage.getItem("auth_token")}` }
+          : {}),
+      },
       body: JSON.stringify({
         location: currentLocation,
         connections,

@@ -5,12 +5,18 @@ from pydantic import BaseModel
 
 from app.models.schemas import StateData
 from app.services.state_manager import get_state, get_cached_map, generate_ascii_map
+from app.services import room_manager
+from app.storage.base import set_user_id
 
 router = APIRouter(tags=["state"])
 
 
 @router.get("/state/{session_id}", response_model=StateData)
 async def get_session_state(session_id: str):
+    # Room: non-host members must read from host's data dir
+    room = await room_manager.get_or_load_room(session_id)
+    if room is not None:
+        set_user_id(room.host_user_id)
     state = await get_state(session_id)
     return state
 

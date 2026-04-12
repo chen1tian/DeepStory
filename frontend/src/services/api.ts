@@ -35,6 +35,8 @@ import type {
   NarrativeDirective,
   CreateDirectiveRequest,
   GenerateNodesRequest,
+  RoomState,
+  JoinRoomResponse,
 } from "../types";
 
 const BASE = "/api";
@@ -62,6 +64,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
+  }
+  // 204 No Content — nothing to parse
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
   }
   return res.json();
 }
@@ -411,3 +417,25 @@ export const deleteDirective = (sessionId: string, directiveId: string) =>
   request<{ status: string }>(`/narrator/${sessionId}/directives/${directiveId}`, {
     method: "DELETE",
   });
+
+// Multiplayer Rooms
+export const createRoom = (sessionId: string) =>
+  request<RoomState>("/rooms", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+
+export const joinRoom = (roomCode: string) =>
+  request<JoinRoomResponse>("/rooms/join", {
+    method: "POST",
+    body: JSON.stringify({ room_code: roomCode }),
+  });
+
+export const getRoom = (sessionId: string) =>
+  request<RoomState>(`/rooms/${sessionId}`);
+
+export const leaveRoom = (sessionId: string) =>
+  request<void>(`/rooms/${sessionId}/leave`, { method: "DELETE" });
+
+export const closeRoom = (sessionId: string) =>
+  request<void>(`/rooms/${sessionId}`, { method: "DELETE" });
