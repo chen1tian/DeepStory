@@ -72,7 +72,7 @@ export default function RoomPanel() {
                 p.is_online ? "bg-green-500" : "bg-gray-500"
               }`}
             />
-            <span>{p.username}</span>
+            <span>{p.protagonist_name || p.username}</span>
             {p.is_host && (
               <span className="text-yellow-500 text-[10px]" title="房主">
                 ♛

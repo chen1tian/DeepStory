@@ -23,9 +23,15 @@ def _generate_room_code() -> str:
             return code
 
 
-async def create_room(session_id: str, host_user_id: str, host_username: str) -> RoomState:
+async def create_room(session_id: str, host_user_id: str, host_username: str,
+                      protagonist_name: str = "", protagonist_avatar: str = "🧑",
+                      protagonist_setting: str = "") -> RoomState:
     code = _generate_room_code()
-    host = PlayerInfo(user_id=host_user_id, username=host_username, is_host=True, is_online=True)
+    host = PlayerInfo(
+        user_id=host_user_id, username=host_username, is_host=True, is_online=True,
+        protagonist_name=protagonist_name, protagonist_avatar=protagonist_avatar,
+        protagonist_setting=protagonist_setting,
+    )
     room = RoomState(
         room_code=code,
         session_id=session_id,
@@ -67,15 +73,25 @@ async def get_or_load_room(session_id: str) -> RoomState | None:
     return await _load_from_storage(session_id)
 
 
-async def join_room(session_id: str, user_id: str, username: str) -> RoomState:
+async def join_room(session_id: str, user_id: str, username: str,
+                    protagonist_name: str = "", protagonist_avatar: str = "🧑",
+                    protagonist_setting: str = "") -> RoomState:
     room = _rooms[session_id]
     # Update if already in player list (reconnect)
     for p in room.players:
         if p.user_id == user_id:
             p.is_online = True
+            if protagonist_name:
+                p.protagonist_name = protagonist_name
+                p.protagonist_avatar = protagonist_avatar
+                p.protagonist_setting = protagonist_setting
             await save_room_state(session_id, room.model_dump())
             return room
-    room.players.append(PlayerInfo(user_id=user_id, username=username))
+    room.players.append(PlayerInfo(
+        user_id=user_id, username=username,
+        protagonist_name=protagonist_name, protagonist_avatar=protagonist_avatar,
+        protagonist_setting=protagonist_setting,
+    ))
     await save_room_state(session_id, room.model_dump())
     return room
 
@@ -161,5 +177,7 @@ def build_combined_content(room: RoomState) -> str:
         if player.user_id in room.pending_turns:
             content = room.pending_turns[player.user_id].strip()
             if content:
-                parts.append(f"[{player.username}]: {content}")
+                # Use protagonist name if set, otherwise username
+                label = player.protagonist_name or player.username
+                parts.append(f"[{label}]: {content}")
     return "\n".join(parts)

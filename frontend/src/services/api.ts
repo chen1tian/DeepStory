@@ -425,10 +425,10 @@ export const createRoom = (sessionId: string) =>
     body: JSON.stringify({ session_id: sessionId }),
   });
 
-export const joinRoom = (roomCode: string) =>
+export const joinRoom = (roomCode: string, userProtagonistId?: string) =>
   request<JoinRoomResponse>("/rooms/join", {
     method: "POST",
-    body: JSON.stringify({ room_code: roomCode }),
+    body: JSON.stringify({ room_code: roomCode, user_protagonist_id: userProtagonistId ?? null }),
   });
 
 export const getRoom = (sessionId: string) =>

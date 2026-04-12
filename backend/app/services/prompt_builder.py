@@ -31,6 +31,7 @@ async def build_chat_messages(
     characters: list | None = None,
     user_protagonist: dict | None = None,
     narrator_directives: list[NarrativeDirective] | None = None,
+    room_players: list | None = None,  # list of PlayerInfo dicts for multiplayer
 ) -> tuple[list[dict], dict]:
     """Build the OpenAI messages array with token budget management.
     
@@ -43,8 +44,32 @@ async def build_chat_messages(
     if not system_prompt:
         system_prompt = await _load_template("system.txt")
 
-    # Append user protagonist setting (user's avatar) to system prompt
-    if user_protagonist:
+    # Append protagonist setting(s) to system prompt
+    if room_players:
+        # Multiplayer: inject each player's protagonist as a separate block
+        protagonist_blocks = []
+        for p in room_players:
+            pname = p.get("protagonist_name", "") or p.get("username", "玩家")
+            psetting = p.get("protagonist_setting", "")
+            username = p.get("username", "")
+            block = (
+                f"【玩家主角 - {pname}】\n"
+                f"玩家「{username}」正在扮演角色「{pname}」。"
+                f"消息中 [{pname}] 标签的内容代表「{pname}」的行动与发言。"
+            )
+            if psetting:
+                block += f"\n「{pname}」的角色背景与设定：\n{psetting}"
+            protagonist_blocks.append(block)
+        if protagonist_blocks:
+            system_prompt = (
+                system_prompt
+                + "\n\n【多人扮演模式】\n"
+                + "本次会话有多名玩家，每人扮演各自的角色。你是世界叙事者，"
+                + "负责描述玩家行动后的世界反应，推动故事发展，不要替任何玩家角色主动行动。\n\n"
+                + "\n\n".join(protagonist_blocks)
+            )
+    elif user_protagonist:
+        # Single player: inject user protagonist block
         pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
         psetting = user_protagonist.get("setting", "") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "setting", "")
         protagonist_block = (
@@ -197,9 +222,9 @@ async def build_chat_messages(
 
     messages.append({"role": "user", "content": user_input})
 
-    # If user protagonist is set, label the user message with their character name
-    # so the LLM receives a clear signal about who is speaking
-    if user_protagonist:
+    # In single-player mode, label the user message with their character name
+    # (room mode already embeds [Name]: labels via build_combined_content)
+    if user_protagonist and not room_players:
         pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
         messages[-1] = {"role": "user", "content": f"[{pname}] {user_input}"}
 

@@ -277,6 +277,9 @@ export interface PlayerInfo {
   is_host: boolean;
   is_online: boolean;
   has_submitted: boolean;
+  protagonist_name: string;
+  protagonist_avatar: string;
+  protagonist_setting: string;
 }
 
 export interface RoomState {

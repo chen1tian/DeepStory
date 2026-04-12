@@ -627,6 +627,9 @@ class PlayerInfo(BaseModel):
     is_host: bool = False
     is_online: bool = True
     has_submitted: bool = False
+    protagonist_name: str = ""
+    protagonist_avatar: str = "🧑"
+    protagonist_setting: str = ""
 
 
 class RoomState(BaseModel):
@@ -644,6 +647,7 @@ class CreateRoomRequest(BaseModel):
 
 class JoinRoomRequest(BaseModel):
     room_code: str
+    user_protagonist_id: str | None = None
 
 
 class JoinRoomResponse(BaseModel):

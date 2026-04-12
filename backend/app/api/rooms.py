@@ -10,8 +10,17 @@ from app.models.schemas import (
     RoomState,
 )
 from app.services import room_manager
+from app.services.chat_manager import load_session
+from app.storage.user_protagonist_storage import load_user_protagonist
 
 router = APIRouter(tags=["rooms"])
+
+
+def _extract_protagonist(pdata: dict | None) -> tuple[str, str, str]:
+    """Return (name, avatar, setting) from protagonist dict."""
+    if not pdata:
+        return "", "🧑", ""
+    return pdata.get("name", ""), pdata.get("avatar_emoji", "🧑"), pdata.get("setting", "")
 
 
 @router.post("/rooms", response_model=RoomState)
@@ -24,10 +33,19 @@ async def create_room(
     if existing:
         # Already exists — return current state
         return existing
+    # Load host protagonist from their session
+    session = await load_session(req.session_id)
+    pname, pavatar, psetting = "", "🧑", ""
+    if session and session.user_protagonist_id:
+        pdata = await load_user_protagonist(session.user_protagonist_id)
+        pname, pavatar, psetting = _extract_protagonist(pdata)
     room = await room_manager.create_room(
         session_id=req.session_id,
         host_user_id=user["id"],
         host_username=user["username"],
+        protagonist_name=pname,
+        protagonist_avatar=pavatar,
+        protagonist_setting=psetting,
     )
     return room
 
@@ -42,10 +60,18 @@ async def join_room(
         raise HTTPException(status_code=404, detail="房间不存在或已关闭")
     if room.round_status == "processing":
         raise HTTPException(status_code=409, detail="当前回合正在处理中，请稍候加入")
+    # Load player's protagonist (get_current_user already set their data dir)
+    pname, pavatar, psetting = "", "🧑", ""
+    if req.user_protagonist_id:
+        pdata = await load_user_protagonist(req.user_protagonist_id)
+        pname, pavatar, psetting = _extract_protagonist(pdata)
     updated = await room_manager.join_room(
         session_id=room.session_id,
         user_id=user["id"],
         username=user["username"],
+        protagonist_name=pname,
+        protagonist_avatar=pavatar,
+        protagonist_setting=psetting,
     )
     return JoinRoomResponse(session_id=room.session_id, room_state=updated)
 

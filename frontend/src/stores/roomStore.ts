@@ -11,7 +11,7 @@ interface RoomStoreState {
 
   // Actions
   openRoom: (sessionId: string) => Promise<RoomState>;
-  joinRoom: (roomCode: string) => Promise<string>; // returns session_id
+  joinRoom: (roomCode: string, userProtagonistId?: string) => Promise<string>; // returns session_id
   exitRoom: () => Promise<void>;
   setStagedContent: (content: string) => void;
   handleRoomMessage: (msg: WSMessageOut) => void;
@@ -30,8 +30,8 @@ export const useRoomStore = create<RoomStoreState>((set, get) => ({
     return room;
   },
 
-  joinRoom: async (roomCode: string) => {
-    const { session_id, room_state } = await joinRoom(roomCode);
+  joinRoom: async (roomCode: string, userProtagonistId?: string) => {
+    const { session_id, room_state } = await joinRoom(roomCode, userProtagonistId);
     set({ roomState: room_state, sessionId: session_id });
     return session_id;
   },

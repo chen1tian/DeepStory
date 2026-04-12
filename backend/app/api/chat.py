@@ -244,7 +244,12 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
 
         # Load user protagonist data for prompt injection
         user_protagonist = None
-        if session and session.user_protagonist_id:
+        room_players = None
+        current_room = room_manager.get_room_by_session(session_id)
+        if current_room is not None:
+            # Multiplayer: inject all players' protagonist settings
+            room_players = [p.model_dump() for p in current_room.players]
+        elif session and session.user_protagonist_id:
             user_protagonist = await load_user_protagonist(session.user_protagonist_id)
 
         # Build prompt with token budget
@@ -261,6 +266,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
             characters=[c.model_dump() for c in session.characters] if session and session.characters else [],
             user_protagonist=user_protagonist,
             narrator_directives=narrator_directives if narrator_directives else None,
+            room_players=room_players,
         )
 
         # Send token budget info

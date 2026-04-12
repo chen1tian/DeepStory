@@ -43,7 +43,7 @@ function PendingTurnsDisplay() {
             className={`flex flex-col items-end animate-in fade-in slide-in-from-bottom-1 duration-200 ${isProcessing ? "opacity-60" : ""}`}
           >
             <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">
-              {player.username}
+              {player.protagonist_name || player.username}
             </span>
             <div
               className={`max-w-[80%] px-3 py-2 rounded-xl rounded-tr-sm text-[14px] leading-relaxed whitespace-pre-wrap border ${color}`}
