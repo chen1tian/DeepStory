@@ -26,6 +26,15 @@ import type {
   ChatHook,
   CreateHookRequest,
   UpdateHookRequest,
+  NarratorArc,
+  CreateArcRequest,
+  UpdateArcRequest,
+  CreateNodeRequest,
+  UpdateNodeRequest,
+  StoryNode,
+  NarrativeDirective,
+  CreateDirectiveRequest,
+  GenerateNodesRequest,
 } from "../types";
 
 const BASE = "/api";
@@ -332,4 +341,58 @@ export const generateMap = (sessionId: string, data: GenerateMapRequest) =>
   request<MapData>(`/sessions/${sessionId}/map/generate`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+
+// Narrator (故事导演)
+export const getArc = (sessionId: string) =>
+  request<NarratorArc>(`/narrator/${sessionId}`);
+
+export const createArc = (sessionId: string, data: CreateArcRequest = {}) =>
+  request<NarratorArc>(`/narrator/${sessionId}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateArc = (sessionId: string, data: UpdateArcRequest) =>
+  request<NarratorArc>(`/narrator/${sessionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteArc = (sessionId: string) =>
+  request<{ status: string }>(`/narrator/${sessionId}`, { method: "DELETE" });
+
+export const toggleArc = (sessionId: string) =>
+  request<NarratorArc>(`/narrator/${sessionId}/toggle`, { method: "POST" });
+
+export const addNode = (sessionId: string, data: CreateNodeRequest) =>
+  request<StoryNode>(`/narrator/${sessionId}/nodes`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateNode = (sessionId: string, nodeId: string, data: UpdateNodeRequest) =>
+  request<StoryNode>(`/narrator/${sessionId}/nodes/${nodeId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteNode = (sessionId: string, nodeId: string) =>
+  request<{ status: string }>(`/narrator/${sessionId}/nodes/${nodeId}`, { method: "DELETE" });
+
+export const generateNodes = (sessionId: string, data: GenerateNodesRequest) =>
+  request<{ nodes: StoryNode[] }>(`/narrator/${sessionId}/generate-nodes`, {
+    method: "POST",
+    body: JSON.stringify({ ...data, connection_id: data.connection_id ?? localStorage.getItem("activeConnectionId") }),
+  });
+
+export const addDirective = (sessionId: string, data: CreateDirectiveRequest) =>
+  request<NarrativeDirective>(`/narrator/${sessionId}/directives`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const deleteDirective = (sessionId: string, directiveId: string) =>
+  request<{ status: string }>(`/narrator/${sessionId}/directives/${directiveId}`, {
+    method: "DELETE",
   });

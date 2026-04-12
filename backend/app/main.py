@@ -73,6 +73,7 @@ from app.api.connections import router as connections_router  # noqa: E402
 from app.api.debug import router as debug_router  # noqa: E402
 from app.api.characters import router as characters_router  # noqa: E402
 from app.api.hooks import router as hooks_router  # noqa: E402
+from app.api.narrator import router as narrator_router  # noqa: E402
 
 app.include_router(sessions_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
@@ -87,6 +88,7 @@ app.include_router(connections_router, prefix="/api")
 app.include_router(debug_router, prefix="/api")
 app.include_router(characters_router, prefix="/api")
 app.include_router(hooks_router, prefix="/api")
+app.include_router(narrator_router, prefix="/api")
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402

@@ -447,6 +447,126 @@ class UpdateHookRequest(BaseModel):
     connection_id: str | None = None
 
 
+# --- Narrator (故事导演) schemas ---
+
+class StoryNode(BaseModel):
+    """A story milestone that the narrator monitors and aims to reach."""
+    id: str
+    title: str = "未命名节点"
+    description: str = ""        # what this node represents / what should happen
+    conditions: str = ""         # natural language trigger conditions, evaluated by LLM
+    status: str = "pending"      # "pending" | "active" | "completed" | "skipped"
+    order: int = 0
+    directives_template: list[str] = Field(default_factory=list)  # directive prompts to use when node activates
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class NarrativeDirective(BaseModel):
+    """A generated instruction injected into the system prompt to guide story direction."""
+    id: str
+    type: str = "custom"
+    # type options:
+    #   introduce_character  - bring a new character into the scene
+    #   introduce_threat     - introduce conflict/antagonist/danger
+    #   atmosphere           - set/enhance mood, descriptions, ambiance
+    #   advance_quest        - push the main quest forward
+    #   reveal_information   - reveal a clue, secret, or plot twist
+    #   create_dilemma       - put the protagonist in a difficult choice
+    #   foreshadow           - plant seeds for future events
+    #   pacing               - control story pacing (slow down / speed up)
+    #   custom               - free-form directive
+    content: str = ""            # the actual text injected into the system prompt
+    priority: int = 5            # 1-10, higher = injected first
+    persistent: bool = False     # True = stays until manually removed; False = consumed after one turn
+    turns_remaining: int | None = None  # limited-life directive; None = unlimited
+    source_node_id: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    consumed_at: str | None = None
+
+
+class NarratorEvaluation(BaseModel):
+    """A record of one narrator evaluation cycle."""
+    turn: int = 0
+    summary: str = ""                      # brief narrative assessment
+    node_changes: list[dict[str, Any]] = Field(default_factory=list)  # [{node_id, old_status, new_status}]
+    new_directive_ids: list[str] = Field(default_factory=list)
+    tension_adjustment: int = 0            # -3 to +3 change this cycle
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class NarratorArc(BaseModel):
+    """Story arc configuration defining the long-term narrative trajectory."""
+    id: str
+    session_id: str
+    title: str = "未命名弧线"
+    goal: str = ""               # the overarching narrative goal
+    themes: list[str] = Field(default_factory=list)  # e.g. ["友情", "背叛", "成长"]
+    tone: str = ""               # overall tone e.g. "悬疑紧张" / "温情治愈"
+    pacing_notes: str = ""       # pacing guidance e.g. "每5轮设置一个小高潮"
+    tension_level: int = 3       # 0-10, current narrative tension
+    nodes: list[StoryNode] = Field(default_factory=list)
+    active_directives: list[NarrativeDirective] = Field(default_factory=list)
+    evaluation_log: list[NarratorEvaluation] = Field(default_factory=list)  # last 10
+    enabled: bool = True
+    connection_id: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateArcRequest(BaseModel):
+    title: str = "未命名弧线"
+    goal: str = ""
+    themes: list[str] = Field(default_factory=list)
+    tone: str = ""
+    pacing_notes: str = ""
+    tension_level: int = 3
+    nodes: list[dict[str, Any]] = Field(default_factory=list)
+    connection_id: str | None = None
+
+
+class UpdateArcRequest(BaseModel):
+    title: str | None = None
+    goal: str | None = None
+    themes: list[str] | None = None
+    tone: str | None = None
+    pacing_notes: str | None = None
+    tension_level: int | None = None
+    enabled: bool | None = None
+    connection_id: str | None = None
+
+
+class CreateNodeRequest(BaseModel):
+    title: str = "未命名节点"
+    description: str = ""
+    conditions: str = ""
+    order: int = 0
+    directives_template: list[str] = Field(default_factory=list)
+
+
+class UpdateNodeRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    conditions: str | None = None
+    order: int | None = None
+    status: str | None = None
+    directives_template: list[str] | None = None
+
+
+class CreateDirectiveRequest(BaseModel):
+    type: str = "custom"
+    content: str = ""
+    priority: int = 5
+    persistent: bool = False
+    turns_remaining: int | None = None
+
+
+class GenerateNodesRequest(BaseModel):
+    goal: str                         # the story goal to generate nodes for
+    count: int = 5                    # how many nodes to generate
+    context: str = ""                 # optional existing story context
+    connection_id: str | None = None
+
+
 # --- API request/response schemas ---
 
 

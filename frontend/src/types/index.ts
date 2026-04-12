@@ -233,6 +233,7 @@ export interface WSMessageOut {
     | "summary_progress"
     | "state_updated"
     | "hook_result"
+    | "narrator_update"
     | "error"
     | "pong"
     | "token_budget";
@@ -473,4 +474,139 @@ export interface HookResultPayload {
   hook_name: string;
   action: HookAction;
   result: unknown;
+}
+
+// ── Narrator (故事导演) types ──
+
+export type NarratorDirectiveType =
+  | "introduce_character"
+  | "introduce_threat"
+  | "atmosphere"
+  | "advance_quest"
+  | "reveal_information"
+  | "create_dilemma"
+  | "foreshadow"
+  | "pacing"
+  | "custom";
+
+export type StoryNodeStatus = "pending" | "active" | "completed" | "skipped";
+
+export interface StoryNode {
+  id: string;
+  title: string;
+  description: string;
+  conditions: string;
+  status: StoryNodeStatus;
+  order: number;
+  directives_template: string[];
+  created_at: string;
+}
+
+export interface NarrativeDirective {
+  id: string;
+  type: NarratorDirectiveType;
+  content: string;
+  priority: number;
+  persistent: boolean;
+  turns_remaining: number | null;
+  source_node_id: string | null;
+  created_at: string;
+  consumed_at: string | null;
+}
+
+export interface NarratorEvaluation {
+  turn: number;
+  summary: string;
+  node_changes: Array<{
+    node_id: string;
+    title: string;
+    old_status: StoryNodeStatus;
+    new_status: StoryNodeStatus;
+    reason: string;
+  }>;
+  new_directive_ids: string[];
+  tension_adjustment: number;
+  timestamp: string;
+}
+
+export interface NarratorArc {
+  id: string;
+  session_id: string;
+  title: string;
+  goal: string;
+  themes: string[];
+  tone: string;
+  pacing_notes: string;
+  tension_level: number;
+  nodes: StoryNode[];
+  active_directives: NarrativeDirective[];
+  evaluation_log: NarratorEvaluation[];
+  enabled: boolean;
+  connection_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateArcRequest {
+  title?: string;
+  goal?: string;
+  themes?: string[];
+  tone?: string;
+  pacing_notes?: string;
+  tension_level?: number;
+  nodes?: Partial<StoryNode>[];
+  connection_id?: string | null;
+}
+
+export interface UpdateArcRequest {
+  title?: string;
+  goal?: string;
+  themes?: string[];
+  tone?: string;
+  pacing_notes?: string;
+  tension_level?: number;
+  enabled?: boolean;
+  connection_id?: string | null;
+}
+
+export interface CreateNodeRequest {
+  title?: string;
+  description?: string;
+  conditions?: string;
+  order?: number;
+  directives_template?: string[];
+}
+
+export interface UpdateNodeRequest {
+  title?: string;
+  description?: string;
+  conditions?: string;
+  order?: number;
+  status?: StoryNodeStatus;
+  directives_template?: string[];
+}
+
+export interface CreateDirectiveRequest {
+  type?: NarratorDirectiveType;
+  content: string;
+  priority?: number;
+  persistent?: boolean;
+  turns_remaining?: number | null;
+}
+
+export interface GenerateNodesRequest {
+  goal: string;
+  count?: number;
+  context?: string;
+  connection_id?: string | null;
+}
+
+export interface NarratorUpdatePayload {
+  arc_id: string;
+  assessment: string;
+  tension_level: number;
+  tension_adjustment: number;
+  node_changes: NarratorEvaluation["node_changes"];
+  new_directive_ids: string[];
+  active_directives_count: number;
 }

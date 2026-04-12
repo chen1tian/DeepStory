@@ -3,10 +3,13 @@ import { useSessionStore } from "./stores/sessionStore";
 import { useUIStore } from "./stores/uiStore";
 import { useChatStore } from "./stores/chatStore";
 import { usePresetStore } from "./stores/presetStore";
+import { useNarratorStore } from "./stores/narratorStore";
 import SessionList from "./components/SessionList";
 import ChatView from "./components/ChatView";
 import EditMode from "./components/EditMode";
 import StatePanel from "./components/StatePanel";
+import NarratorPanel from "./components/NarratorPanel";
+import ArcEditor from "./components/ArcEditor";
 import StoryManager from "./components/StoryManager";
 import StorySelector from "./components/StorySelector";
 import ProtagonistManager from "./components/ProtagonistManager";
@@ -66,7 +69,12 @@ export default function App() {
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showHookManager, setShowHookManager] = useState(false);
+  const [showArcEditor, setShowArcEditor] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<"state" | "narrator">("state");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const loadArc = useNarratorStore((s) => s.loadArc);
+  const arc = useNarratorStore((s) => s.arc);
 
   const sessions = useSessionStore((s) => s.sessions);
 
@@ -82,6 +90,13 @@ export default function App() {
       setRestored(true);
     }
   }, [sessions, currentSessionId, restored, connectToSession]);
+
+  // Load narrator arc when session changes
+  useEffect(() => {
+    if (currentSessionId) {
+      loadArc(currentSessionId);
+    }
+  }, [currentSessionId, loadArc]);
 
   const handleNewSession = () => setShowStorySelector(true);
 
@@ -133,6 +148,9 @@ export default function App() {
       )}
       {showHookManager && (
         <HookManager onClose={() => setShowHookManager(false)} />
+      )}
+      {showArcEditor && currentSessionId && (
+        <ArcEditor sessionId={currentSessionId} onClose={() => setShowArcEditor(false)} />
       )}
       {showStorySelector && (
         <StorySelector
@@ -230,6 +248,19 @@ export default function App() {
           >
             <span className="text-[14px]">🔗</span> Hooks
           </button>
+          <button
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${
+              statePanelOpen && rightPanelTab === "narrator" ? "bg-purple-600/20 text-purple-300 ring-1 ring-inset ring-purple-500/20" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
+            }`}
+            onClick={() => {
+              if (!statePanelOpen) { toggleStatePanel(); setRightPanelTab("narrator"); }
+              else if (rightPanelTab !== "narrator") { setRightPanelTab("narrator"); }
+              else { toggleStatePanel(); }
+            }}
+            title="故事导演"
+          >
+            <span className="text-[14px]">🎬</span> 导演
+          </button>
         </div>
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -245,11 +276,44 @@ export default function App() {
             <aside className="fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex flex-col transition-all">
               {/* 移动端 state面板返回按钮 */}
               <div className="md:hidden flex items-center bg-[var(--bg-secondary)] border-b border-[var(--border)] h-12 px-3 justify-between shrink-0 sticky top-0 z-10 w-full">
-                 <span className="font-bold">📊 状态板</span>
+                 <span className="font-bold">{rightPanelTab === "narrator" ? "🎬 故事导演" : "📊 状态板"}</span>
                  <button onClick={toggleStatePanel} className="text-[var(--text-secondary)] text-2xl p-2 w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--bg-tertiary)] active:bg-gray-700">×</button>
               </div>
-              <div className="flex-1 overflow-y-auto w-full p-4">
-                <StatePanel />
+              {/* Tab switcher */}
+              <div className="hidden md:flex border-b border-[var(--border)] shrink-0">
+                <button
+                  onClick={() => setRightPanelTab("state")}
+                  className={`flex-1 py-2 text-[12px] font-medium transition-all ${
+                    rightPanelTab === "state"
+                      ? "border-b-2 border-[var(--accent)] text-[var(--text-primary)]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  📊 状态
+                </button>
+                <button
+                  onClick={() => setRightPanelTab("narrator")}
+                  className={`flex-1 py-2 text-[12px] font-medium transition-all flex items-center justify-center gap-1 ${
+                    rightPanelTab === "narrator"
+                      ? "border-b-2 border-purple-400 text-purple-300"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  🎬 导演
+                  {arc && arc.enabled && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                  )}
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto w-full">
+                {rightPanelTab === "state" ? (
+                  <div className="p-4"><StatePanel /></div>
+                ) : currentSessionId ? (
+                  <NarratorPanel
+                    sessionId={currentSessionId}
+                    onOpenEditor={() => setShowArcEditor(true)}
+                  />
+                ) : null}
               </div>
             </aside>
           )}

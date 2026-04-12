@@ -6,7 +6,7 @@ import aiofiles
 import structlog
 
 from app.config import settings
-from app.models.schemas import Message, SummaryData, StateData
+from app.models.schemas import Message, NarrativeDirective, SummaryData, StateData
 from app.services.token_counter import count_tokens, count_messages_tokens
 
 log = structlog.get_logger()
@@ -30,6 +30,7 @@ async def build_chat_messages(
     user_input: str,
     characters: list | None = None,
     user_protagonist: dict | None = None,
+    narrator_directives: list[NarrativeDirective] | None = None,
 ) -> tuple[list[dict], dict]:
     """Build the OpenAI messages array with token budget management.
     
@@ -121,7 +122,21 @@ async def build_chat_messages(
                 state_text = state_text[: settings.state_max_tokens * 3]
                 state_tokens = count_tokens(state_text) + 4
 
-    # 3. Summary
+    # 3. Narrator directives
+    narrator_text = ""
+    narrator_tokens = 0
+    narrator_max_tokens = getattr(settings, "narrator_max_tokens", 500)
+    if narrator_directives:
+        sorted_directives = sorted(narrator_directives, key=lambda d: d.priority, reverse=True)
+        lines = [d.content for d in sorted_directives if d.content.strip()]
+        if lines:
+            narrator_text = "\n".join(f"- {line}" for line in lines)
+            narrator_tokens = count_tokens(narrator_text) + 4
+            if narrator_tokens > narrator_max_tokens:
+                narrator_text = narrator_text[: narrator_max_tokens * 3]
+                narrator_tokens = count_tokens(narrator_text) + 4
+
+    # 4. Summary
     summary_text = ""
     summary_tokens = 0
     if summary and summary.rolling_summary:
@@ -131,15 +146,15 @@ async def build_chat_messages(
             summary_text = summary_text[: settings.summary_max_tokens * 3]
             summary_tokens = count_tokens(summary_text) + 4
 
-    # 4. Transition prompt
+    # 5. Transition prompt
     transition = "以上是之前的聊天总结，以下是最近的详细聊天记录。"
     transition_tokens = count_tokens(transition) + 4 if summary_text else 0
 
-    # 5. User input
+    # 6. User input
     user_tokens = count_tokens(user_input) + 4
 
-    # 6. Remaining budget for recent messages
-    used = sys_tokens + state_tokens + summary_tokens + transition_tokens + user_tokens + reserved
+    # 7. Remaining budget for recent messages
+    used = sys_tokens + state_tokens + narrator_tokens + summary_tokens + transition_tokens + user_tokens + reserved
     remaining = total_budget - used
 
     # Fill recent messages from newest to oldest
@@ -158,6 +173,9 @@ async def build_chat_messages(
     if state_text:
         messages.append({"role": "system", "content": f"[背景资料]\n{state_text}"})
 
+    if narrator_text:
+        messages.append({"role": "system", "content": f"[叙事指导]\n{narrator_text}"})
+
     if summary_text:
         messages.append({"role": "system", "content": f"[过往聊天总结]\n{summary_text}"})
 
@@ -173,6 +191,7 @@ async def build_chat_messages(
         "total": total_budget,
         "system_prompt": sys_tokens,
         "state": state_tokens,
+        "narrator": narrator_tokens,
         "summary": summary_tokens,
         "messages": msg_tokens,
         "reserved": reserved,

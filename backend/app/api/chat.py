@@ -134,6 +134,10 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
             user_protagonist = await load_user_protagonist(session.user_protagonist_id)
 
         # Build prompt with token budget
+        # Load narrator directives (and consume one-shots/decrement turns)
+        from app.services.narrator_service import consume_directives
+        narrator_directives = await consume_directives(session_id)
+
         messages, budget_info = await build_chat_messages(
             system_prompt=session.system_prompt if session else "",
             state=state,
@@ -142,6 +146,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn) -> N
             user_input=msg_in.content,
             characters=[c.model_dump() for c in session.characters] if session and session.characters else [],
             user_protagonist=user_protagonist,
+            narrator_directives=narrator_directives if narrator_directives else None,
         )
 
         # Send token budget info
@@ -223,6 +228,17 @@ async def _background_post_chat(
             connection_id=connection_id,
             push_fn=_push,
         )
+
+        # Run narrator evaluation (after state is available)
+        from app.services.narrator_service import evaluate_and_direct
+        narrator_result = await evaluate_and_direct(
+            session_id=session_id,
+            branch_msgs=branch_msgs,
+            state=state,
+            connection_id=effective_state_conn,
+        )
+        if narrator_result:
+            await _push(WSMessageOut(type="narrator_update", data=narrator_result))
 
     except Exception:
         log.exception("background_post_chat_failed", session_id=session_id)

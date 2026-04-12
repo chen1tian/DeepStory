@@ -100,6 +100,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
           break;
         }
 
+        case "narrator_update": {
+          if (msg.data) {
+            import("./narratorStore").then(({ useNarratorStore }) => {
+              useNarratorStore.getState().handleNarratorUpdate(
+                sessionId,
+                msg.data as unknown as import("../types").NarratorUpdatePayload,
+              );
+            });
+          }
+          break;
+        }
+
         case "error":
           set({ error: msg.content || "Unknown error", isStreaming: false, streamingContent: "" });
           break;
