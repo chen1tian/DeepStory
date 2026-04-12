@@ -171,13 +171,16 @@ async def close_room(session_id: str) -> None:
 
 
 def build_combined_content(room: RoomState) -> str:
-    """Merge all submitted player turns into a single user message."""
+    """Merge all submitted player turns into a single user message, in submission order."""
+    player_map = {p.user_id: p for p in room.players}
     parts = []
-    for player in room.players:
-        if player.user_id in room.pending_turns:
-            content = room.pending_turns[player.user_id].strip()
-            if content:
-                # Use protagonist name if set, otherwise username
-                label = player.protagonist_name or player.username
-                parts.append(f"[{label}]: {content}")
+    for user_id, content in room.pending_turns.items():  # insertion = submission order
+        content = content.strip()
+        if not content:
+            continue
+        player = player_map.get(user_id)
+        if player is None:
+            continue
+        label = player.protagonist_name or player.username
+        parts.append(f"[{label}]: {content}")
     return "\n".join(parts)

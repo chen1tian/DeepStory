@@ -23,23 +23,28 @@ const PLAYER_COLORS = [
 function PendingTurnsDisplay() {
   const roomState = useRoomStore((s) => s.roomState);
   const isProcessing = useRoomStore((s) => s.isProcessing);
+  const isStreaming = useChatStore((s) => s.isStreaming);
 
   if (!roomState) return null;
-  const hasPending = Object.keys(roomState.pending_turns).length > 0;
-  if (!hasPending && !isProcessing) return null;
+  // Hide once AI starts streaming so the response appears at the bottom without
+  // pending-turn bubbles sandwiched between the last historical message and AI output
+  if (isStreaming) return null;
+
+  const pendingEntries = Object.entries(roomState.pending_turns); // submission order
+  if (pendingEntries.length === 0 && !isProcessing) return null;
 
   return (
     <div className="px-4 md:px-6 pb-3 flex flex-col gap-2">
       <div className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wider mb-0.5">
         {isProcessing ? "DM 正在处理..." : "本轮行动预览"}
       </div>
-      {roomState.players.map((player, i) => {
-        const content = roomState.pending_turns[player.user_id];
-        if (!content) return null;
+      {pendingEntries.map(([userId, content], i) => {
+        const player = roomState.players.find((p) => p.user_id === userId);
+        if (!player || !content) return null;
         const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
         return (
           <div
-            key={player.user_id}
+            key={userId}
             className={`flex flex-col items-end animate-in fade-in slide-in-from-bottom-1 duration-200 ${isProcessing ? "opacity-60" : ""}`}
           >
             <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">
