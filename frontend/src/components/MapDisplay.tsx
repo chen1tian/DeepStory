@@ -221,7 +221,7 @@ export default function MapOverlay() {
 
       {/* Body */}
       {!collapsed && (
-        <div style={{ padding: "8px 10px" }}>
+        <div style={{ padding: "8px 10px", maxHeight: 220, overflowY: "auto" }}>
           {generating && !mapData?.ascii_map && (
             <div
               style={{
