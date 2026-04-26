@@ -157,7 +157,8 @@ async def build_chat_messages(
                 state_text = state_text[: settings.state_max_tokens * 3]
                 state_tokens = count_tokens(state_text) + 4
 
-    # 3. Narrator directives
+    # 3. Narrator directives — placed at the END of the prompt (right before
+    #    user input) for maximum weight. Built here for token accounting.
     narrator_text = ""
     narrator_tokens = 0
     narrator_max_tokens = getattr(settings, "narrator_max_tokens", 500)
@@ -165,11 +166,27 @@ async def build_chat_messages(
         sorted_directives = sorted(narrator_directives, key=lambda d: d.priority, reverse=True)
         lines = [d.content for d in sorted_directives if d.content.strip()]
         if lines:
-            narrator_text = "\n".join(f"- {line}" for line in lines)
+            numbered = "\n".join(f"{i+1}. {line}" for i, line in enumerate(lines))
+            narrator_text = (
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "【导演指令 — 本次回复中必须执行】\n"
+                "在本次回复中呈现以下场景：\n\n"
+                f"{numbered}\n\n"
+                "执行要求：\n"
+                "- 自然地融入当前场景，与前文无缝衔接，不要生硬转折\n"
+                "- 通过环境描写、角色行为或对话自然引入，而非直接叙述\n"
+                "- 本指令优先级高于其他风格指引\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            )
             narrator_tokens = count_tokens(narrator_text) + 4
             if narrator_tokens > narrator_max_tokens:
                 narrator_text = narrator_text[: narrator_max_tokens * 3]
                 narrator_tokens = count_tokens(narrator_text) + 4
+            log.info("narrator_injected", directive_count=len(lines), tokens=narrator_tokens)
+        else:
+            log.debug("narrator_inject_empty_lines", directive_count=len(narrator_directives))
+    else:
+        log.debug("narrator_inject_no_directives")
 
     # 4. Summary
     summary_text = ""
@@ -208,9 +225,6 @@ async def build_chat_messages(
     if state_text:
         messages.append({"role": "system", "content": f"[背景资料]\n{state_text}"})
 
-    if narrator_text:
-        messages.append({"role": "system", "content": f"[叙事指导]\n{narrator_text}"})
-
     if summary_text:
         messages.append({"role": "system", "content": f"[过往聊天总结]\n{summary_text}"})
 
@@ -219,6 +233,11 @@ async def build_chat_messages(
 
     for msg in selected_messages:
         messages.append({"role": msg.role, "content": msg.content})
+
+    # Narrator directives placed at the END — right before user input —
+    # so the LLM gives them maximum weight when generating the response.
+    if narrator_text:
+        messages.append({"role": "user", "content": narrator_text})
 
     messages.append({"role": "user", "content": user_input})
 

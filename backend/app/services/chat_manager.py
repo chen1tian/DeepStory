@@ -99,10 +99,11 @@ async def add_message_to_branch(
     role: str,
     content: str,
     parent_id: str | None = None,
+    thinking: str = "",
 ) -> Message:
     """Create a new message and append it to the active branch."""
     msg_id = generate_id()
-    token_count = count_tokens(content)
+    token_count = count_tokens(content + thinking)
 
     session = await load_session(session_id)
     if session is None:
@@ -119,6 +120,7 @@ async def add_message_to_branch(
         parent_id=parent_id,
         role=role,
         content=content,
+        thinking=thinking,
         timestamp=datetime.now().isoformat(),
         token_count=token_count,
         branch_id=branch_id,

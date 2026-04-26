@@ -84,12 +84,20 @@ async def consume_directives(session_id: str) -> list[NarrativeDirective]:
     Saves the updated arc.
     """
     arc = await load_arc(session_id)
-    if arc is None or not arc.enabled:
+    if arc is None:
+        log.debug("narrator_consume_no_arc", session_id=session_id)
+        return []
+    if not arc.enabled:
+        log.debug("narrator_consume_disabled", session_id=session_id)
         return []
 
     active = get_active_directives(arc)
     if not active:
+        log.debug("narrator_consume_empty", session_id=session_id)
         return []
+
+    log.info("narrator_consume", session_id=session_id, directive_count=len(active),
+             types=[d.type for d in active])
 
     # Process lifecycle
     remaining: list[NarrativeDirective] = []
@@ -289,6 +297,49 @@ async def evaluate_and_direct(
         "new_directive_ids": new_directive_ids,
         "active_directives_count": len(get_active_directives(arc)),
     }
+
+
+async def seed_initial_directives(session_id: str) -> None:
+    """Activate the first pending node and seed directives from its template.
+
+    Called synchronously when an arc is created or toggled on, so the first
+    chat message already has narrative guidance injected.
+    """
+    arc = await load_arc(session_id)
+    if arc is None or not arc.enabled:
+        return
+
+    if get_active_directives(arc):
+        return  # Already has directives
+
+    pending = sorted([n for n in arc.nodes if n.status == "pending"], key=lambda n: n.order)
+    if not pending:
+        return
+
+    first = pending[0]
+    first.status = "active"
+    arc.updated_at = datetime.now().isoformat()
+
+    # Use node's directives_template if available, otherwise generate a basic
+    # directive from the node's title and description so guidance is never empty.
+    templates = first.directives_template
+    if not templates:
+        desc = first.description or first.title
+        templates = [f"开始推进故事节点「{first.title}」：{desc}"]
+
+    for tmpl in templates[:2]:
+        arc.active_directives.append(NarrativeDirective(
+            id=str(uuid.uuid4()),
+            type="advance_quest",
+            content=tmpl,
+            priority=7,
+            persistent=False,
+            source_node_id=first.id,
+        ))
+
+    await save_arc(arc)
+    log.info("narrator_seeded", session_id=session_id, node=first.title,
+             directive_count=min(len(templates), 2))
 
 
 async def generate_nodes_with_ai(

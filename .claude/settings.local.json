@@ -6,7 +6,15 @@
       "Bash(python -m py_compile app/api/protagonists.py)",
       "Bash(python -m py_compile app/api/user_protagonists.py)",
       "Bash(python -m py_compile app/api/characters.py)",
-      "Bash(python -m py_compile app/api/rooms.py)"
+      "Bash(python -m py_compile app/api/rooms.py)",
+      "Bash(python -m py_compile app/api/narrator.py)",
+      "Bash(python -m py_compile app/services/narrator_service.py)",
+      "Bash(python -m py_compile app/services/prompt_builder.py)",
+      "Bash(python -m py_compile app/api/chat.py)",
+      "Bash(python -m py_compile app/api/debug.py)",
+      "Bash(python -m py_compile app/services/llm_service.py)",
+      "Bash(python -m py_compile app/agents/tools.py)",
+      "Bash(python -m py_compile app/services/chat_manager.py)"
     ]
   }
 }

@@ -21,6 +21,7 @@ from app.services.narrator_service import (
     generate_nodes_with_ai,
     load_arc,
     save_arc,
+    seed_initial_directives,
 )
 from app.storage.narrator_storage import delete_narrator
 
@@ -58,6 +59,7 @@ async def create_arc(session_id: str, body: CreateArcRequest):
         ] if body.nodes else [],
     )
     await save_arc(arc)
+    await seed_initial_directives(session_id)
     return arc
 
 
@@ -91,6 +93,8 @@ async def toggle_arc(session_id: str):
     arc.enabled = not arc.enabled
     arc.updated_at = datetime.now().isoformat()
     await save_arc(arc)
+    if arc.enabled:
+        await seed_initial_directives(session_id)
     return arc
 
 

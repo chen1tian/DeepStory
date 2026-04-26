@@ -87,8 +87,11 @@ async def chat_completion(messages: list[dict], connection_id: str | None = None
     raise last_err  # type: ignore[misc]
 
 
-async def chat_completion_stream(messages: list[dict], connection_id: str | None = None, **kwargs) -> AsyncIterator[str]:
-    """Streaming chat completion with retry on initial connection."""
+async def chat_completion_stream(messages: list[dict], connection_id: str | None = None, **kwargs) -> AsyncIterator[tuple[str, str]]:
+    """Streaming chat completion with retry on initial connection.
+
+    Yields (kind, text) tuples where kind is "thinking" or "content".
+    """
     client, model_name = await get_client_and_model(connection_id)
     last_err: Exception | None = None
     for attempt in range(3):
@@ -102,8 +105,13 @@ async def chat_completion_stream(messages: list[dict], connection_id: str | None
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta if chunk.choices else None
-                if delta and delta.content:
-                    yield delta.content
+                if delta:
+                    # Some models (DeepSeek, etc.) return reasoning in reasoning_content
+                    rc = getattr(delta, "reasoning_content", None)
+                    if rc:
+                        yield ("thinking", rc)
+                    if delta.content:
+                        yield ("content", delta.content)
             return
         except _RETRYABLE as e:
             last_err = e

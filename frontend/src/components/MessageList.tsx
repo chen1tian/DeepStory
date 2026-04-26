@@ -13,6 +13,7 @@ interface Props {
 export default function MessageList({ onBranch, onDelete, onResend }: Props) {
   const messages = useChatStore((s) => s.messages);
   const streamingContent = useChatStore((s) => s.streamingContent);
+  const streamingThinking = useChatStore((s) => s.streamingThinking);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const summaryStatus = useChatStore((s) => s.summaryStatus);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
@@ -70,13 +71,14 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
           />
         ))}
 
-        {isStreaming && streamingContent && (
+        {isStreaming && (streamingContent || streamingThinking) && (
           <MessageBubble
             message={{
               id: "__streaming__",
               parent_id: null,
               role: "assistant",
               content: streamingContent,
+              thinking: streamingThinking || undefined,
               timestamp: "",
               token_count: 0,
               branch_id: "",

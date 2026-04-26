@@ -7,6 +7,7 @@ interface ChatState {
   messages: Message[];
   activeBranch: string[];
   streamingContent: string;
+  streamingThinking: string;
   isStreaming: boolean;
   tokenBudget: TokenBudgetInfo | null;
   stateData: StateData | null;
@@ -34,6 +35,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   activeBranch: [],
   streamingContent: "",
+  streamingThinking: "",
   isStreaming: false,
   tokenBudget: null,
   stateData: null,
@@ -49,6 +51,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const handler = (msg: WSMessageOut) => {
       switch (msg.type) {
+        case "thinking":
+          set((s) => ({
+            streamingThinking: s.streamingThinking + (msg.content || ""),
+            isStreaming: true,
+          }));
+          break;
+
         case "token":
           set((s) => ({
             streamingContent: s.streamingContent + (msg.content || ""),
@@ -57,13 +66,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           break;
 
         case "chat_complete": {
-          const { streamingContent, messages } = get();
-          if (streamingContent) {
+          const { streamingContent, streamingThinking, messages } = get();
+          if (streamingContent || streamingThinking) {
             const newMsg: Message = {
               id: msg.message_id || crypto.randomUUID(),
               parent_id: messages.length > 0 ? messages[messages.length - 1].id : null,
               role: "assistant",
               content: streamingContent,
+              thinking: streamingThinking || undefined,
               timestamp: new Date().toISOString(),
               token_count: 0,
               branch_id: "main",
@@ -71,6 +81,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             set({
               messages: [...messages, newMsg],
               streamingContent: "",
+              streamingThinking: "",
               isStreaming: false,
             });
           }

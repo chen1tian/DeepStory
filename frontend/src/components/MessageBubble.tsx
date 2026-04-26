@@ -56,6 +56,34 @@ function findCharacterAvatar(name: string, characters: SessionCharacter[]): { ur
   return null;
 }
 
+/** Extract <think>...</think> blocks from content. Handles partial tags during streaming. */
+function parseThinking(content: string): { thinking: string; rest: string } {
+  // Complete <think>...</think> blocks
+  const completeRegex = /<think>([\s\S]*?)<\/think>/gi;
+  const parts: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = completeRegex.exec(content)) !== null) {
+    if (m[1].trim()) parts.push(m[1].trim());
+  }
+  let working = content.replace(completeRegex, "");
+
+  // Handle partial opening tag during streaming: <think> without </think>
+  const openIdx = working.search(/<think>/i);
+  if (openIdx !== -1) {
+    const afterOpen = working.slice(openIdx + 7); // length of "<think>"
+    const closeIdx = afterOpen.search(/<\/think>/i);
+    if (closeIdx === -1) {
+      // No closing tag yet — streaming in progress
+      const partial = afterOpen.trim();
+      if (partial) parts.push(partial);
+      working = working.slice(0, openIdx);
+    }
+  }
+
+  const rest = working.trim();
+  return { thinking: parts.join("\n\n"), rest };
+}
+
 export default function MessageBubble({
   message, isStreaming, isPendingDelete, isConfirming,
   onBranch, onDelete, onResend, onConfirmStart, onConfirmCancel,
@@ -72,6 +100,10 @@ export default function MessageBubble({
   const userAvatar = isUser
     ? (protagonistAvatarUrl ? { url: protagonistAvatarUrl, emoji: protagonistAvatarEmoji || "🧑" } : null)
     : null;
+
+  // Use dedicated thinking field (from API) or fall back to parsing <think> tags
+  const thinking = !isUser ? (message.thinking || parseThinking(message.content).thinking) : "";
+  const cleanContent = !isUser ? parseThinking(message.content).rest : message.content;
 
   return (
     <div
@@ -129,14 +161,36 @@ export default function MessageBubble({
             {isUser ? (
               <div className="whitespace-pre-wrap">{message.content}</div>
             ) : (
-              <div
-                className={`prose prose-invert prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0 prose-pre:my-2 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md max-w-none ${
-                  isStreaming ? "streaming-cursor" : ""
-                }`}
-              >
-                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                  {message.content}
-                </ReactMarkdown>
+              <div className="w-full">
+                {thinking && (
+                  <details
+                    className="thinking-block mb-2 bg-amber-500/5 border border-amber-500/20 rounded-lg overflow-hidden"
+                    open={isStreaming}
+                  >
+                    <summary className="thinking-summary px-3 py-1.5 text-[11px] font-medium text-amber-400/80 cursor-pointer hover:text-amber-300 select-none flex items-center gap-1.5">
+                      <span className="text-[13px]">🧠</span> 思考过程
+                      <span className="text-[10px] text-amber-500/50 ml-auto">{isStreaming ? "思考中..." : "点击展开/收起"}</span>
+                    </summary>
+                    <div className="thinking-content px-3 pb-3 pt-1 text-[12px] text-amber-300/70 leading-relaxed whitespace-pre-wrap border-t border-amber-500/10">
+                      {thinking}
+                    </div>
+                  </details>
+                )}
+                {cleanContent ? (
+                  <div
+                    className={`prose prose-invert prose-p:my-1 prose-p:first:mt-0 prose-p:last:mb-0 prose-pre:my-2 prose-a:text-indigo-400 prose-code:text-indigo-200 prose-code:bg-black/30 prose-code:px-1 prose-code:py-0.5 prose-code:rounded-md max-w-none ${
+                      isStreaming && !thinking ? "streaming-cursor" : ""
+                    }`}
+                  >
+                    <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
+                      {cleanContent}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  isStreaming && thinking && (
+                    <div className="text-[13px] text-[var(--text-secondary)] animate-pulse">生成回复中...</div>
+                  )
+                )}
               </div>
             )}
           </div>

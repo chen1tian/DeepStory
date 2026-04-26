@@ -9,7 +9,6 @@ from app.services.chat_manager import (
     load_summary,
     load_state,
 )
-from app.services.prompt_builder import build_chat_messages
 from app.storage.user_protagonist_storage import load_user_protagonist
 
 router = APIRouter(tags=["debug"])
@@ -36,7 +35,11 @@ class DebugPromptResponse(BaseModel):
 
 @router.post("/debug/{session_id}/prompt", response_model=DebugPromptResponse)
 async def debug_prompt(session_id: str, req: DebugPromptRequest):
-    """Preview the full messages array that would be sent to the LLM."""
+    """Preview the full messages array that would be sent to the LLM.
+
+    Uses the same build_prompt function as the real chat flow so both
+    paths are always in sync (narrator directives, token budget, etc.).
+    """
     session = await load_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -50,30 +53,42 @@ async def debug_prompt(session_id: str, req: DebugPromptRequest):
     if session.user_protagonist_id:
         user_protagonist = await load_user_protagonist(session.user_protagonist_id)
 
-    messages, budget_info = await build_chat_messages(
-        system_prompt=session.system_prompt,
-        state=state,
-        summary=summary,
-        recent_messages=branch_msgs,
+    # Read narrator directives WITHOUT consuming (read-only preview)
+    from app.services.narrator_service import get_active_directives, load_arc
+    narrator_directives = None
+    arc = await load_arc(session_id)
+    if arc and arc.enabled:
+        active = get_active_directives(arc)
+        if active:
+            narrator_directives = active
+
+    # Use the same build_prompt as the real chat flow (chat.py → tools.py)
+    from app.agents.tools import build_prompt
+    prompt_result = await build_prompt(
+        system_prompt=session.system_prompt or "",
+        state=state.model_dump() if state else None,
+        summary=summary.model_dump() if summary else None,
+        recent_messages=[m.model_dump() for m in branch_msgs],
         user_input=req.user_input,
         characters=[c.model_dump() for c in session.characters] if session.characters else [],
-        user_protagonist=user_protagonist,
+        user_protagonist=user_protagonist.model_dump() if user_protagonist and hasattr(user_protagonist, 'model_dump') else user_protagonist,
+        narrator_directives=narrator_directives,
     )
 
     debug_messages = []
-    for m in messages:
+    for m in prompt_result["messages"]:
         content = m.get("content", "")
         debug_messages.append(DebugMessage(
             role=m.get("role", ""),
             content=content,
-            token_estimate=len(content) // 2,  # rough estimate
+            token_estimate=len(content) // 2,
         ))
 
     return DebugPromptResponse(
         messages=debug_messages,
-        budget=budget_info,
-        total_messages=len(messages),
+        budget=prompt_result["budget_info"],
+        total_messages=len(prompt_result["messages"]),
         system_prompt=session.system_prompt or "",
-        summary=summary.rolling_summary or "",
+        summary=summary.rolling_summary if summary else "",
         state_text=str(state.model_dump()) if state else "",
     )

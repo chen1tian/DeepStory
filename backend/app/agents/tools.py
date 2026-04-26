@@ -63,9 +63,10 @@ async def save_user_message(
 async def save_assistant_message(
     session_id: str,
     content: str,
+    thinking: str = "",
 ) -> dict:
     """Save the assistant's response message and return it."""
-    msg = await add_message_to_branch(session_id, "assistant", content)
+    msg = await add_message_to_branch(session_id, "assistant", content, thinking=thinking)
     return msg.model_dump()
 
 
@@ -130,15 +131,24 @@ async def build_prompt(
 async def stream_response(
     messages: list[dict],
     connection_id: str | None = None,
-) -> str:
-    """Stream LLM tokens to the WebSocket and return the full response text."""
+) -> dict:
+    """Stream LLM tokens to the WebSocket and return the full response.
+
+    Returns {"content": str, "thinking": str} so the caller can persist both.
+    """
     full_response = ""
+    full_thinking = ""
     push_fn = get_push_fn()
-    async for token in chat_completion_stream(messages, connection_id=connection_id):
-        full_response += token
-        if push_fn:
-            await push_fn(WSMessageOut(type="token", content=token))
-    return full_response
+    async for kind, text in chat_completion_stream(messages, connection_id=connection_id):
+        if kind == "thinking":
+            full_thinking += text
+            if push_fn:
+                await push_fn(WSMessageOut(type="thinking", content=text))
+        else:
+            full_response += text
+            if push_fn:
+                await push_fn(WSMessageOut(type="token", content=text))
+    return {"content": full_response, "thinking": full_thinking}
 
 
 # ── Phase 2 Metadata Tools ──

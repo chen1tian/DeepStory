@@ -11,6 +11,7 @@ class Message(BaseModel):
     parent_id: str | None = None
     role: str  # "user" | "assistant" | "system"
     content: str
+    thinking: str = ""
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
     token_count: int = 0
     branch_id: str = "main"
@@ -653,7 +654,7 @@ class WSMessageIn(BaseModel):
 
 
 class WSMessageOut(BaseModel):
-    type: str  # "token" | "chat_complete" | "summary_progress" | "state_updated" | "hook_result" | "error" | "pong"
+    type: str  # "token" | "thinking" | "chat_complete" | "summary_progress" | "state_updated" | "hook_result" | "error" | "pong"
     content: str = ""
     message_id: str = ""
     status: str = ""

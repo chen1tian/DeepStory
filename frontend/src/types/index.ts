@@ -28,6 +28,7 @@ export interface Message {
   parent_id: string | null;
   role: "user" | "assistant" | "system";
   content: string;
+  thinking?: string;
   timestamp: string;
   token_count: number;
   branch_id: string;
@@ -255,6 +256,7 @@ export interface WSMessageIn {
 export interface WSMessageOut {
   type:
     | "token"
+    | "thinking"
     | "chat_complete"
     | "summary_progress"
     | "state_updated"
