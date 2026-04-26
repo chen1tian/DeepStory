@@ -92,12 +92,22 @@ async def build_prompt(
     user_input: str = "",
     characters: list[dict] | None = None,
     user_protagonist: dict | None = None,
-    narrator_directives: list[dict] | None = None,
+    narrator_directives: list | None = None,
     room_players: list[dict] | None = None,
 ) -> dict:
     """Build the full message array with token budgeting for the LLM call."""
     from app.services.chat_manager import SessionMeta
-    from app.models.schemas import SummaryData, StateData
+    from app.models.schemas import NarrativeDirective, SummaryData, StateData
+
+    # Convert narrator_directives to NarrativeDirective objects if passed as dicts
+    nd_objects: list[NarrativeDirective] | None = None
+    if narrator_directives:
+        nd_objects = []
+        for d in narrator_directives:
+            if isinstance(d, NarrativeDirective):
+                nd_objects.append(d)
+            else:
+                nd_objects.append(NarrativeDirective(**d))
 
     messages, budget_info = await build_chat_messages(
         system_prompt=system_prompt,
@@ -107,7 +117,7 @@ async def build_prompt(
         user_input=user_input,
         characters=characters or [],
         user_protagonist=user_protagonist,
-        narrator_directives=narrator_directives,
+        narrator_directives=nd_objects,
         room_players=room_players,
     )
 

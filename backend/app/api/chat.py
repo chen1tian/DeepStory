@@ -260,10 +260,40 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
         elif session_data and session_data.get("user_protagonist_id"):
             user_protagonist = await load_user_protagonist(session_data["user_protagonist_id"])
 
-        # Load narrator directives
-        from app.services.narrator_service import consume_directives
+        # Phase 1, Step 2.5: Run narrator evaluation BEFORE building prompt
+        # so directives are injected into the current turn (not next turn).
+        from app.services.narrator_service import consume_directives, evaluate_and_direct, get_active_directives, load_arc
+        from app.models.schemas import StateData
+
+        eval_branch_msgs = [Message(**m) for m in ctx["branch_messages"]]
+        eval_state = StateData(**ctx["state"]) if ctx["state"] else None
+
+        await evaluate_and_direct(
+            session_id=session_id,
+            branch_msgs=eval_branch_msgs,
+            state=eval_state,
+            connection_id=msg_in.connection_id,
+        )
+
+        # Push narrator update to frontend so the panel refreshes
+        updated_arc = await load_arc(session_id)
+        if updated_arc and updated_arc.evaluation_log:
+            last_eval = updated_arc.evaluation_log[-1]
+            await _send(WSMessageOut(
+                type="narrator_update",
+                data={
+                    "arc_id": updated_arc.id,
+                    "assessment": last_eval.summary,
+                    "tension_level": updated_arc.tension_level,
+                    "tension_adjustment": last_eval.tension_adjustment,
+                    "node_changes": [nc.model_dump() if hasattr(nc, 'model_dump') else nc for nc in last_eval.node_changes],
+                    "new_directive_ids": last_eval.new_directive_ids,
+                    "active_directives_count": len(get_active_directives(updated_arc)),
+                },
+            ))
+
+        # Consume freshly generated directives
         narrator_directives = await consume_directives(session_id)
-        narrator_directive_dicts = [d.model_dump() for d in narrator_directives] if narrator_directives else None
 
         # Phase 1, Step 3: Build prompt with token budgeting
         characters = session_data.get("characters", []) if session_data else []
@@ -276,7 +306,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
             user_input=msg_in.content,
             characters=characters,
             user_protagonist=user_protagonist.model_dump() if user_protagonist and hasattr(user_protagonist, 'model_dump') else user_protagonist,
-            narrator_directives=narrator_directive_dicts,
+            narrator_directives=narrator_directives,
             room_players=room_players,
         )
 
@@ -320,9 +350,8 @@ async def _background_post_chat(
     state_connection_id: str | None = None,
     last_message_id: str | None = None,
 ) -> None:
-    """Background task using agent tools: summarize, hooks, extract state, narrator."""
+    """Background task: summarize, hooks, extract state (narrator runs synchronously in _handle_chat)."""
     from app.agents.hook_agent import run_hooks_for_event as agent_run_hooks
-    from app.agents.narrator_agent import run_narrator_evaluation
 
     async def _push(msg: WSMessageOut) -> None:
         await _push_to_session(session_id, msg)
@@ -364,16 +393,6 @@ async def _background_post_chat(
             connection_id=connection_id,
             push_fn=_push,
         )
-
-        # Run narrator evaluation
-        narrator_result = await run_narrator_evaluation(
-            session_id=session_id,
-            branch_msgs=branch_msgs,
-            state=state,
-            connection_id=effective_state_conn,
-        )
-        if narrator_result:
-            await _push(WSMessageOut(type="narrator_update", data=narrator_result))
 
     except Exception:
         log.exception("background_post_chat_failed", session_id=session_id)
