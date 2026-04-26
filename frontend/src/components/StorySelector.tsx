@@ -127,9 +127,9 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
                     </div>
                     <div className="text-[11px] text-[var(--text-secondary)]">
                       {s.openers.length} 条开场白
-                      {s.protagonist_id && userProtagonists.find((p) => p.id === s.protagonist_id) && (
-                        <> · {userProtagonists.find((p) => p.id === s.protagonist_id)!.avatar_emoji} {userProtagonists.find((p) => p.id === s.protagonist_id)!.name}</>
-                      )}
+                      {s.protagonist_id && (() => { const bp = userProtagonists.find((p) => p.id === s.protagonist_id); return bp ? (
+                        <> · {bp.avatar_url ? <img src={bp.avatar_url} alt="" className="w-4 h-4 rounded object-cover inline-block align-text-bottom" /> : bp.avatar_emoji} {bp.name}</>
+                      ) : null; })()}
                     </div>
                   </div>
                 ))}
@@ -156,7 +156,11 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
                   <div>
                     <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 block">绑定主角</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-base">{boundProtagonist.avatar_emoji}</span>
+                      {boundProtagonist.avatar_url ? (
+                        <img src={boundProtagonist.avatar_url} alt="" className="w-6 h-6 rounded object-cover" />
+                      ) : (
+                        <span className="text-base">{boundProtagonist.avatar_emoji}</span>
+                      )}
                       <span className="text-[13px]">{boundProtagonist.name}</span>
                     </div>
                   </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSessionStore } from "../stores/sessionStore";
 import { useProtagonistStore } from "../stores/protagonistStore";
 import { useUIStore } from "../stores/uiStore";
+import ImagePicker from "./ImagePicker";
 import type { SessionCharacter } from "../types";
 
 const EMOJI_OPTIONS = ["🧑", "👩", "👨", "🧙", "🦸", "🧝", "🧛", "🥷", "👸", "🤴", "🧚", "🦹", "👼", "🐉", "🐺", "🦊"];
@@ -162,7 +163,7 @@ interface CharacterItemProps {
   char: SessionCharacter;
   expanded: boolean;
   onToggleExpand: () => void;
-  onSave: (data: { name?: string; setting?: string; avatar_emoji?: string }) => Promise<unknown>;
+  onSave: (data: { name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null }) => Promise<unknown>;
   onDelete: () => void;
   onCopy: () => void;
   onPushToPool: () => void;
@@ -179,12 +180,12 @@ function CharacterItem({
   onPushToPool,
   onPullFromPool,
 }: CharacterItemProps) {
-  const [form, setForm] = useState({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji });
+  const [form, setForm] = useState({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji, avatar_url: char.avatar_url as string | null });
   const [saving, setSaving] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   useEffect(() => {
-    setForm({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji });
+    setForm({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji, avatar_url: char.avatar_url as string | null });
   }, [char]);
 
   const update = <K extends keyof typeof form>(key: K, val: (typeof form)[K]) =>
@@ -202,7 +203,11 @@ function CharacterItem({
   return (
     <div className={`border-b border-[var(--border)] transition-colors ${expanded ? "bg-[var(--bg-secondary)]" : "hover:bg-[var(--bg-secondary)/50]"}`}>
       <div className="flex items-center gap-2 px-3 py-2">
-        <span className="text-lg">{char.avatar_emoji}</span>
+        {char.avatar_url ? (
+          <img src={char.avatar_url} alt="" className="w-7 h-7 rounded object-cover flex-shrink-0" />
+        ) : (
+          <span className="text-lg">{char.avatar_emoji}</span>
+        )}
         <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 truncate">{char.name || "未命名角色"}</span>
         {char.pool_id && <span className="text-xs opacity-50" title="已关联角色池">🔗</span>}
         <div className="flex gap-1 shrink-0">
@@ -250,29 +255,40 @@ function CharacterItem({
         <div className="px-3 py-3 border-t border-[var(--border)] bg-[var(--bg-primary)] flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] text-[var(--text-secondary)]">头像</label>
-            <div style={{ position: "relative" }}>
-              <button
-                className="text-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg w-10 h-10 cursor-pointer hover:border-indigo-500/50 transition-colors"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              >
-                {form.avatar_emoji}
-              </button>
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 grid grid-cols-8 gap-1 z-10 shadow-xl">
-                  {EMOJI_OPTIONS.map((e) => (
-                    <button
-                      key={e}
-                      className={`text-xl p-1.5 rounded cursor-pointer transition-colors ${e === form.avatar_emoji ? "bg-indigo-500/20 ring-1 ring-indigo-500/50" : "hover:bg-[var(--bg-tertiary)]"}`}
-                      onClick={() => {
-                        update("avatar_emoji", e);
-                        setShowEmojiPicker(false);
-                      }}
-                    >
-                      {e}
-                    </button>
-                  ))}
+            <div className="flex items-start gap-3">
+              <ImagePicker
+                value={form.avatar_url}
+                onChange={(url) => update("avatar_url", url)}
+                promptHint={form.name + "的角色形象"}
+                size={72}
+              />
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-[var(--text-secondary)]">或选 Emoji</span>
+                <div style={{ position: "relative" }}>
+                  <button
+                    className="text-xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg w-9 h-9 cursor-pointer hover:border-indigo-500/50 transition-colors"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  >
+                    {form.avatar_emoji}
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 grid grid-cols-8 gap-1 z-10 shadow-xl">
+                      {EMOJI_OPTIONS.map((e) => (
+                        <button
+                          key={e}
+                          className={`text-xl p-1.5 rounded cursor-pointer transition-colors ${e === form.avatar_emoji ? "bg-indigo-500/20 ring-1 ring-indigo-500/50" : "hover:bg-[var(--bg-tertiary)]"}`}
+                          onClick={() => {
+                            update("avatar_emoji", e);
+                            setShowEmojiPicker(false);
+                          }}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -313,7 +329,7 @@ function CharacterItem({
 
 interface AddCharacterModalProps {
   sessionId: string;
-  onAdd: (sessionId: string, data: { pool_id?: string | null; name?: string; setting?: string; avatar_emoji?: string }) => Promise<SessionCharacter>;
+  onAdd: (sessionId: string, data: { pool_id?: string | null; name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null }) => Promise<SessionCharacter>;
   onClose: () => void;
 }
 
@@ -322,7 +338,7 @@ function AddCharacterModal({ sessionId, onAdd, onClose }: AddCharacterModalProps
   const fetchProtagonists = useProtagonistStore((s) => s.fetchProtagonists);
   const [tab, setTab] = useState<"pool" | "new">("pool");
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
-  const [newForm, setNewForm] = useState({ name: "新角色", setting: "", avatar_emoji: "🧑" });
+  const [newForm, setNewForm] = useState({ name: "新角色", setting: "", avatar_emoji: "🧑", avatar_url: null as string | null });
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
@@ -389,7 +405,11 @@ function AddCharacterModal({ sessionId, onAdd, onClose }: AddCharacterModalProps
                 className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${selectedPoolId === p.id ? "bg-[var(--bg-surface)] ring-1 ring-indigo-500/50" : "hover:bg-[var(--bg-surface)]"}`}
                 onClick={() => setSelectedPoolId(p.id)}
               >
-                <span className="text-sm">{p.avatar_emoji}</span>
+                {p.avatar_url ? (
+                  <img src={p.avatar_url} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                ) : (
+                  <span className="text-sm">{p.avatar_emoji}</span>
+                )}
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="text-[13px] font-medium text-[var(--text-primary)] truncate">{p.name}</div>
                   <div className="text-xs text-[var(--text-secondary)] truncate">

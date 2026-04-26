@@ -39,6 +39,7 @@ export interface SessionCharacter {
   name: string;
   setting: string;
   avatar_emoji: string;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -48,12 +49,14 @@ export interface CreateSessionCharacterRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
 }
 
 export interface UpdateSessionCharacterRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
 }
 
 export interface Session {
@@ -279,6 +282,7 @@ export interface PlayerInfo {
   has_submitted: boolean;
   protagonist_name: string;
   protagonist_avatar: string;
+  protagonist_avatar_url: string | null;
   protagonist_setting: string;
 }
 
@@ -433,6 +437,7 @@ export interface UserProtagonist {
   name: string;
   setting: string;
   avatar_emoji: string;
+  avatar_url: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -442,6 +447,7 @@ export interface CreateUserProtagonistRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
   is_default?: boolean;
 }
 
@@ -449,6 +455,7 @@ export interface UpdateUserProtagonistRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
   is_default?: boolean;
 }
 
@@ -459,6 +466,7 @@ export interface Protagonist {
   name: string;
   setting: string;
   avatar_emoji: string;
+  avatar_url: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -468,6 +476,7 @@ export interface CreateProtagonistRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
   is_default?: boolean;
 }
 
@@ -475,6 +484,7 @@ export interface UpdateProtagonistRequest {
   name?: string;
   setting?: string;
   avatar_emoji?: string;
+  avatar_url?: string | null;
   is_default?: boolean;
 }
 

@@ -3,6 +3,7 @@ import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import { useSessionStore } from "../stores/sessionStore";
 import { useUIStore } from "../stores/uiStore";
 import AIAssistModal from "./AIAssistModal";
+import ImagePicker from "./ImagePicker";
 import type { UserProtagonist } from "../types";
 
 const EMOJI_OPTIONS = ["🧑", "👩", "👨", "🧙", "🦸", "🧝", "🧛", "🥷", "👸", "🤴", "🧚", "🦹", "👼", "🐉", "🐺", "🦊"];
@@ -85,7 +86,11 @@ export default function UserProtagonistManager({ onClose }: { onClose: () => voi
                 onClick={() => setEditingId(p.id)}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">{p.avatar_emoji}</span>
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                  ) : (
+                    <span className="text-base">{p.avatar_emoji}</span>
+                  )}
                   <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 truncate">{p.name || "未命名主角"}</span>
                   {p.is_default && <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded-full font-medium">默认主角</span>}
                   {isCurrentSessionProtagonist(p.id) && (
@@ -189,6 +194,7 @@ interface FormData {
   name: string;
   setting: string;
   avatar_emoji: string;
+  avatar_url: string | null;
   is_default: boolean;
 }
 
@@ -203,6 +209,7 @@ function UserProtagonistForm({
     name: protagonist.name,
     setting: protagonist.setting,
     avatar_emoji: protagonist.avatar_emoji || "🧑",
+    avatar_url: protagonist.avatar_url ?? null,
     is_default: protagonist.is_default,
   });
   const [saving, setSaving] = useState(false);
@@ -234,29 +241,40 @@ function UserProtagonistForm({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label className="text-[13px] font-medium text-[var(--text-secondary)]">头像</label>
-        <div style={{ position: "relative" }}>
-          <button
-            className="text-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          >
-            {form.avatar_emoji}
-          </button>
-          {showEmojiPicker && (
-            <div className="absolute top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 grid grid-cols-8 gap-1 z-10 shadow-lg">
-              {EMOJI_OPTIONS.map((e) => (
-                <button
-                  key={e}
-                  className={`text-xl p-1.5 rounded cursor-pointer border-none transition-colors hover:bg-[var(--bg-surface)]${e === form.avatar_emoji ? " bg-indigo-500/20" : " bg-transparent"}`}
-                  onClick={() => {
-                    update("avatar_emoji", e);
-                    setShowEmojiPicker(false);
-                  }}
-                >
-                  {e}
-                </button>
-              ))}
+        <div className="flex items-start gap-4">
+          <ImagePicker
+            value={form.avatar_url}
+            onChange={(url) => update("avatar_url", url)}
+            promptHint={form.name + "的角色形象"}
+            size={96}
+          />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] text-[var(--text-secondary)]">或选择 Emoji</span>
+            <div style={{ position: "relative" }}>
+              <button
+                className="text-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              >
+                {form.avatar_emoji}
+              </button>
+              {showEmojiPicker && (
+                <div className="absolute top-full left-0 mt-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg p-2 grid grid-cols-8 gap-1 z-10 shadow-lg">
+                  {EMOJI_OPTIONS.map((e) => (
+                    <button
+                      key={e}
+                      className={`text-xl p-1.5 rounded cursor-pointer border-none transition-colors hover:bg-[var(--bg-surface)]${e === form.avatar_emoji ? " bg-indigo-500/20" : " bg-transparent"}`}
+                      onClick={() => {
+                        update("avatar_emoji", e);
+                        setShowEmojiPicker(false);
+                      }}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

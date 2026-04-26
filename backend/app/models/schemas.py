@@ -259,6 +259,7 @@ class UserProtagonist(BaseModel):
     name: str = "未命名主角"
     setting: str = ""  # character background / personality / description
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None  # image URL from upload or AI generation
     is_default: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -268,6 +269,7 @@ class CreateUserProtagonistRequest(BaseModel):
     name: str = "未命名主角"
     setting: str = ""
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None
     is_default: bool = False
 
 
@@ -275,6 +277,7 @@ class UpdateUserProtagonistRequest(BaseModel):
     name: str | None = None
     setting: str | None = None
     avatar_emoji: str | None = None
+    avatar_url: str | None = None
     is_default: bool | None = None
 
 
@@ -286,6 +289,7 @@ class Protagonist(BaseModel):
     name: str = "未命名主角"
     setting: str = ""  # character background / personality / description
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None  # image URL from upload or AI generation
     is_default: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -300,6 +304,7 @@ class SessionCharacter(BaseModel):
     name: str = "未命名角色"
     setting: str = ""
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None  # image URL from upload or AI generation
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -309,18 +314,21 @@ class CreateSessionCharacterRequest(BaseModel):
     name: str = "未命名角色"
     setting: str = ""
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None
 
 
 class UpdateSessionCharacterRequest(BaseModel):
     name: str | None = None
     setting: str | None = None
     avatar_emoji: str | None = None
+    avatar_url: str | None = None
 
 
 class CreateProtagonistRequest(BaseModel):
     name: str = "未命名主角"
     setting: str = ""
     avatar_emoji: str = "🧑"
+    avatar_url: str | None = None
     is_default: bool = False
 
 
@@ -328,6 +336,7 @@ class UpdateProtagonistRequest(BaseModel):
     name: str | None = None
     setting: str | None = None
     avatar_emoji: str | None = None
+    avatar_url: str | None = None
     is_default: bool | None = None
 
 
@@ -667,6 +676,7 @@ class PlayerInfo(BaseModel):
     has_submitted: bool = False
     protagonist_name: str = ""
     protagonist_avatar: str = "🧑"
+    protagonist_avatar_url: str | None = None
     protagonist_setting: str = ""
 
 

@@ -25,11 +25,13 @@ def _generate_room_code() -> str:
 
 async def create_room(session_id: str, host_user_id: str, host_username: str,
                       protagonist_name: str = "", protagonist_avatar: str = "🧑",
+                      protagonist_avatar_url: str | None = None,
                       protagonist_setting: str = "") -> RoomState:
     code = _generate_room_code()
     host = PlayerInfo(
         user_id=host_user_id, username=host_username, is_host=True, is_online=True,
         protagonist_name=protagonist_name, protagonist_avatar=protagonist_avatar,
+        protagonist_avatar_url=protagonist_avatar_url,
         protagonist_setting=protagonist_setting,
     )
     room = RoomState(
@@ -75,6 +77,7 @@ async def get_or_load_room(session_id: str) -> RoomState | None:
 
 async def join_room(session_id: str, user_id: str, username: str,
                     protagonist_name: str = "", protagonist_avatar: str = "🧑",
+                    protagonist_avatar_url: str | None = None,
                     protagonist_setting: str = "") -> RoomState:
     room = _rooms[session_id]
     # Update if already in player list (reconnect)
@@ -84,12 +87,14 @@ async def join_room(session_id: str, user_id: str, username: str,
             if protagonist_name:
                 p.protagonist_name = protagonist_name
                 p.protagonist_avatar = protagonist_avatar
+                p.protagonist_avatar_url = protagonist_avatar_url
                 p.protagonist_setting = protagonist_setting
             await save_room_state(session_id, room.model_dump())
             return room
     room.players.append(PlayerInfo(
         user_id=user_id, username=username,
         protagonist_name=protagonist_name, protagonist_avatar=protagonist_avatar,
+        protagonist_avatar_url=protagonist_avatar_url,
         protagonist_setting=protagonist_setting,
     ))
     await save_room_state(session_id, room.model_dump())

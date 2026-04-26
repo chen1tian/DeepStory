@@ -105,6 +105,7 @@ async def create_session(req: CreateSessionRequest):
                     name=pdata.get("name", "未命名角色"),
                     setting=pdata.get("setting", ""),
                     avatar_emoji=pdata.get("avatar_emoji", "🧑"),
+                    avatar_url=pdata.get("avatar_url"),
                     created_at=now,
                     updated_at=now,
                 ))

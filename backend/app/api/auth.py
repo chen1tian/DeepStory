@@ -140,6 +140,7 @@ async def _init_default_user_protagonist(user_id: str) -> None:
         "name": "User",
         "setting": "故事的主角",
         "avatar_emoji": "🧑",
+        "avatar_url": None,
         "is_default": True,
         "created_at": now,
         "updated_at": now,

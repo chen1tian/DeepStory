@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(python -m py_compile app/models/schemas.py)",
+      "Bash(python -m py_compile app/api/protagonists.py)",
+      "Bash(python -m py_compile app/api/user_protagonists.py)",
+      "Bash(python -m py_compile app/api/characters.py)",
+      "Bash(python -m py_compile app/api/rooms.py)"
+    ]
+  }
+}

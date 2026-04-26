@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File
 import structlog
 
-from app.storage.base import get_data_dir
+from app.config import settings
 
 log = structlog.get_logger()
 
@@ -19,7 +19,7 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def _images_dir() -> Path:
-    return get_data_dir() / "images"
+    return settings.data_dir / "images"
 
 
 @router.post("/images/upload")

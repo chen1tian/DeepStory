@@ -14,7 +14,7 @@ from pathlib import Path
 import httpx
 import structlog
 
-from app.storage.base import get_data_dir
+from app.config import settings
 
 log = structlog.get_logger()
 
@@ -252,7 +252,7 @@ async def generate_image(
 
 def _save_image_from_bytes(content: bytes, ext: str = ".png") -> str:
     """Save image bytes to the images directory, return the URL path."""
-    images_dir = get_data_dir() / "images"
+    images_dir = settings.data_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid.uuid4()}{ext}"
     (images_dir / filename).write_bytes(content)

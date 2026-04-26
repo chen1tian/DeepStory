@@ -281,7 +281,11 @@ function StoryForm({
                     update("cast_ids", newIds);
                   }}
                 />
-                <span>{p.avatar_emoji}</span>
+                {p.avatar_url ? (
+                  <img src={p.avatar_url} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                ) : (
+                  <span>{p.avatar_emoji}</span>
+                )}
                 <span className="truncate">{p.name}</span>
               </label>
             );
