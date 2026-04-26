@@ -83,9 +83,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
           break;
 
-        case "summary_progress":
-          set({ summaryStatus: msg.status || "" });
+        case "summary_progress": {
+          const status = msg.status || "";
+          // "complete" means done — clear the indicator so the banner disappears
+          set({ summaryStatus: status === "complete" ? "" : status });
           break;
+        }
 
         case "state_updated":
           if (msg.data) {
