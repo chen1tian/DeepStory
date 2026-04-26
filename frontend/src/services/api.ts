@@ -23,6 +23,10 @@ import type {
   Connection,
   CreateConnectionRequest,
   UpdateConnectionRequest,
+  TestConnectionResult,
+  UploadImageResult,
+  GenerateImageRequest,
+  GenerateImageResult,
   ChatHook,
   CreateHookRequest,
   UpdateHookRequest,
@@ -297,6 +301,9 @@ export const updateConnection = (id: string, data: UpdateConnectionRequest) =>
 export const deleteConnection = (id: string) =>
   request<{ status: string }>(`/connections/${id}`, { method: "DELETE" });
 
+export const testConnection = (id: string) =>
+  request<TestConnectionResult>(`/connections/${id}/test`, { method: "POST" });
+
 // Session system prompt
 export const updateSessionSystemPrompt = (
   sessionId: string,
@@ -439,3 +446,34 @@ export const leaveRoom = (sessionId: string) =>
 
 export const closeRoom = (sessionId: string) =>
   request<void>(`/rooms/${sessionId}`, { method: "DELETE" });
+
+// Image Upload & Generation
+export const uploadImage = async (file: File): Promise<UploadImageResult> => {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  // Note: do NOT set Content-Type for FormData — browser sets it automatically with boundary
+  const res = await fetch(`${BASE}/images/upload`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  if (res.status === 401) {
+    localStorage.removeItem("auth_token");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+  return res.json();
+};
+
+export const generateImage = (data: GenerateImageRequest) =>
+  request<GenerateImageResult>("/image-gen/generate", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });

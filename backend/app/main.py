@@ -79,6 +79,8 @@ from app.api.characters import router as characters_router  # noqa: E402
 from app.api.hooks import router as hooks_router  # noqa: E402
 from app.api.narrator import router as narrator_router  # noqa: E402
 from app.api.rooms import router as rooms_router  # noqa: E402
+from app.api.images import router as images_router  # noqa: E402
+from app.api.image_gen import router as image_gen_router  # noqa: E402
 
 app.include_router(sessions_router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(chat_router, prefix="/api", dependencies=[Depends(get_current_user)])
@@ -95,12 +97,21 @@ app.include_router(characters_router, prefix="/api", dependencies=[Depends(get_c
 app.include_router(hooks_router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(narrator_router, prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(rooms_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(images_router, prefix="/api", dependencies=[Depends(get_current_user)])
+app.include_router(image_gen_router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 # WebSocket route (no /api prefix)
 from app.api.chat import ws_router  # noqa: E402
 
 app.include_router(ws_router)
 app.include_router(auth_router, prefix="/api/auth")
+
+# Serve uploaded images as static files
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+images_dir = settings.data_dir / "images"
+images_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/images", StaticFiles(directory=str(images_dir)), name="images")
 
 
 @app.get("/api/health")

@@ -58,10 +58,12 @@ async def list_connections() -> list[dict[str, Any]]:
         default_conn = {
             "id": str(uuid.uuid4()),
             "name": "默认连接 (从 .env 加载)",
+            "connection_type": "llm",
             "api_key": settings.api_key or "",
             "api_base_url": str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1",
             "model_name": settings.model_name or "gpt-4o-mini",
             "is_default": True,
+            "image_gen_config": None,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }

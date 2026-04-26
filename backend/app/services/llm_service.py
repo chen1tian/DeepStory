@@ -19,15 +19,20 @@ async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncO
     conn_data = None
     if connection_id:
         conn_data = await load_connection(connection_id)
+        # Skip non-LLM connections when loading by ID
+        if conn_data and conn_data.get("connection_type", "llm") != "llm":
+            conn_data = None
 
     if not conn_data:
         conns = await list_connections()
-        for c in conns:
+        # Only consider LLM-type connections
+        llm_conns = [c for c in conns if c.get("connection_type", "llm") == "llm"]
+        for c in llm_conns:
             if c.get("is_default"):
                 conn_data = c
                 break
-        if not conn_data and conns:
-            conn_data = conns[0]
+        if not conn_data and llm_conns:
+            conn_data = llm_conns[0]
 
     if not conn_data:
         # Fallback to env

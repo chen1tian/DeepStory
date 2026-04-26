@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +47,7 @@ class EventInfo(BaseModel):
 
 class WorldState(BaseModel):
     location: str = ""
-    time: str = ""
+    time: Optional[str] = ""
     atmosphere: str = ""
     key_items: list[str] = Field(default_factory=list)
 
@@ -333,29 +333,48 @@ class UpdateProtagonistRequest(BaseModel):
 
 # --- Connection schemas ---
 
+from enum import Enum
+
+
+class ConnectionType(str, Enum):
+    LLM = "llm"
+    IMAGE_GENERATION = "image_generation"
+
+
+class ImageGenConfig(BaseModel):
+    image_size: str = "1024x1024"
+    n: int = 1
+
+
 class Connection(BaseModel):
     id: str
     name: str = "未命名连接"
+    connection_type: ConnectionType = ConnectionType.LLM
     api_key: str = ""
     api_base_url: str = ""
     model_name: str = "gpt-4o-mini"
     is_default: bool = False
+    image_gen_config: ImageGenConfig | None = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 class CreateConnectionRequest(BaseModel):
     name: str = "未命名连接"
+    connection_type: ConnectionType = ConnectionType.LLM
     api_key: str = ""
     api_base_url: str = ""
     model_name: str = "gpt-4o-mini"
     is_default: bool = False
+    image_gen_config: ImageGenConfig | None = None
 
 class UpdateConnectionRequest(BaseModel):
     name: str | None = None
+    connection_type: ConnectionType | None = None
     api_key: str | None = None
     api_base_url: str | None = None
     model_name: str | None = None
     is_default: bool | None = None
+    image_gen_config: ImageGenConfig | None = None
 
 # --- Preset schemas ---
 

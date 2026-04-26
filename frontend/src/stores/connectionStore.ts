@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import type { Connection, CreateConnectionRequest, UpdateConnectionRequest } from "../types";
+import type { Connection, CreateConnectionRequest, UpdateConnectionRequest, TestConnectionResult } from "../types";
 import {
   getConnections,
   createConnection,
   updateConnection,
   deleteConnection,
+  testConnection as testConnectionApi,
 } from "../services/api";
 
 interface ConnectionState {
@@ -19,6 +20,7 @@ interface ConnectionState {
   removeConnection: (id: string) => Promise<void>;
   setActiveConnectionId: (id: string | null) => void;
   setStateConnectionId: (id: string | null) => void;
+  testConnection: (id: string) => Promise<TestConnectionResult>;
 }
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
@@ -100,5 +102,9 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
       localStorage.removeItem("stateConnectionId");
     }
     set({ stateConnectionId: id });
+  },
+
+  testConnection: async (id: string) => {
+    return await testConnectionApi(id);
   },
 }));

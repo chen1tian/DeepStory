@@ -313,31 +313,69 @@ export interface CreateSessionRequest {
 
 // --- Connections ---
 
+export type ConnectionType = "llm" | "image_generation";
+
+export interface ImageGenConfig {
+  image_size: string;
+  n: number;
+}
+
 export interface Connection {
   id: string;
   name: string;
+  connection_type: ConnectionType;
   api_key: string;
   api_base_url: string;
   model_name: string;
   is_default: boolean;
+  image_gen_config: ImageGenConfig | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateConnectionRequest {
   name?: string;
+  connection_type?: ConnectionType;
   api_key?: string;
   api_base_url?: string;
   model_name?: string;
   is_default?: boolean;
+  image_gen_config?: ImageGenConfig | null;
 }
 
 export interface UpdateConnectionRequest {
   name?: string;
+  connection_type?: ConnectionType;
   api_key?: string;
   api_base_url?: string;
   model_name?: string;
   is_default?: boolean;
+  image_gen_config?: ImageGenConfig | null;
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+}
+
+// --- Image Upload & Generation ---
+
+export interface UploadImageResult {
+  url: string;
+  filename: string;
+}
+
+export interface GenerateImageRequest {
+  prompt: string;
+  connection_id?: string | null;
+  size?: string;
+  n?: number;
+}
+
+export interface GenerateImageResult {
+  success: boolean;
+  message: string;
+  url: string | null;
 }
 
 export interface EditorTemplate {
