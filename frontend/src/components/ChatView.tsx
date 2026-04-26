@@ -109,11 +109,14 @@ export default function ChatView() {
     async (messageId: string) => {
       if (!currentSessionId) return;
       const msg = messages.find((m) => m.id === messageId);
-      if (!msg) return;
+      if (!msg) {
+        addToast("未找到该消息，请刷新页面后重试", "error");
+        return;
+      }
       try {
         await resendMessage(currentSessionId, msg);
-      } catch {
-        addToast("重发消息失败", "error");
+      } catch (err) {
+        addToast(err instanceof Error ? err.message : "重发消息失败", "error");
       }
     },
     [currentSessionId, messages, resendMessage, addToast]

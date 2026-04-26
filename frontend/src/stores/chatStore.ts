@@ -84,6 +84,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
               streamingThinking: "",
               isStreaming: false,
             });
+          } else {
+            set({ isStreaming: false });
           }
           break;
         }
@@ -170,7 +172,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   sendMessage: (content: string) => {
     const { ws, messages, isStreaming } = get();
-    if (!ws || isStreaming) return;
+    if (!ws) throw new Error("WebSocket 未连接");
+    if (isStreaming) throw new Error("正在生成回复中，请等待完成后再发送");
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -192,7 +195,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   sendBranchMessage: (content: string, fromMessageId: string) => {
     const { ws, isStreaming } = get();
-    if (!ws || isStreaming) return;
+    if (!ws) throw new Error("WebSocket 未连接");
+    if (isStreaming) throw new Error("正在生成回复中，请等待完成后再发送");
 
     // Trim messages to branch point + add user message
     const { messages } = get();
@@ -248,7 +252,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   resendMessage: async (sessionId: string, message: Message) => {
     const { ws, isStreaming } = get();
-    if (!ws || isStreaming) return;
+    if (!ws) throw new Error("WebSocket 未连接");
+    if (isStreaming) throw new Error("正在生成回复中，请等待完成后再重发");
 
     // Delete this message and everything after from backend + local state
     await apiDeleteMessagesFrom(sessionId, message.id);
