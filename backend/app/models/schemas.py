@@ -424,6 +424,14 @@ class HookAction(BaseModel):
     script: str = ""            # used by custom_script
 
 
+class HookCallback(BaseModel):
+    """Callback configuration for after a hook completes."""
+    type: str = "none"              # "none" | "send_message" | "trigger_hook" | "custom"
+    target_hook_id: str = ""        # hook ID to chain when type is "trigger_hook"
+    payload_template: str = ""      # template for constructing follow-up payload
+    condition: str = ""             # expression evaluated for "custom" type (empty = always)
+
+
 class ChatHook(BaseModel):
     id: str
     name: str = "未命名 Hook"
@@ -436,6 +444,10 @@ class ChatHook(BaseModel):
     response_schema: str = ""        # describes expected format e.g. "array of {label, prompt}"
     action: HookAction = Field(default_factory=HookAction)
     connection_id: str | None = None  # optional override; falls back to active connection
+    # Agent-based execution fields (Phase 3)
+    agent_mode: str = "batch"         # "batch" | "individual"
+    agent_tools: list[str] = Field(default_factory=list)  # enabled tool names for this hook
+    after_hook_callback: HookCallback | None = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -451,6 +463,9 @@ class CreateHookRequest(BaseModel):
     response_schema: str = ""
     action: HookAction = Field(default_factory=HookAction)
     connection_id: str | None = None
+    agent_mode: str = "batch"
+    agent_tools: list[str] = Field(default_factory=list)
+    after_hook_callback: HookCallback | None = None
 
 
 class UpdateHookRequest(BaseModel):
@@ -464,6 +479,9 @@ class UpdateHookRequest(BaseModel):
     response_schema: str | None = None
     action: HookAction | None = None
     connection_id: str | None = None
+    agent_mode: str | None = None
+    agent_tools: list[str] | None = None
+    after_hook_callback: HookCallback | None = None
 
 
 # --- Narrator (故事导演) schemas ---

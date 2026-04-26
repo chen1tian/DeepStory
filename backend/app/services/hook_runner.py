@@ -72,6 +72,9 @@ async def run_hooks_for_event(
     """
     Load all enabled hooks matching `trigger`, batch them into one LLM call,
     then push individual `hook_result` WS messages for each hook.
+
+    Supports agent_mode: "batch" (default, all hooks in one LLM call) or
+    "individual" (each hook gets its own sub-agent call in the future).
     """
     all_hooks_raw = await list_hooks()
     hooks: list[ChatHook] = [
@@ -83,23 +86,46 @@ async def run_hooks_for_event(
     if not hooks:
         return
 
-    # Determine how many context messages to include (use max across all hooks)
+    # Split hooks by agent_mode
+    batch_hooks = [h for h in hooks if h.agent_mode != "individual"]
+    individual_hooks = [h for h in hooks if h.agent_mode == "individual"]
+
+    # Execute batch hooks in one LLM call
+    if batch_hooks:
+        await _execute_batch_hooks(
+            session_id, trigger, batch_hooks, branch_msgs, state, connection_id, push_fn
+        )
+
+    # Execute individual hooks (one LLM call per hook)
+    for hook in individual_hooks:
+        await _execute_individual_hook(
+            session_id, hook, branch_msgs, state, connection_id, push_fn
+        )
+
+
+async def _execute_batch_hooks(
+    session_id: str,
+    trigger: str,
+    hooks: list[ChatHook],
+    branch_msgs: list[Message],
+    state: StateData | None,
+    connection_id: str | None,
+    push_fn,
+) -> None:
+    """Execute multiple hooks in a single batched LLM call."""
     max_ctx = max(h.context_messages for h in hooks)
     recent_msgs = branch_msgs[-max_ctx:] if max_ctx > 0 else []
 
-    # Format conversation context
     conversation_text = "\n".join(
         f"{'用户' if m.role == 'user' else 'AI'}: {m.content}"
         for m in recent_msgs
         if m.role in ("user", "assistant")
     )
 
-    # Build state context (only if any hook needs it)
     state_text = ""
     if state and any(h.include_state for h in hooks):
         state_text = _build_state_summary(state)
 
-    # Build the batched system prompt
     hook_instructions = []
     for h in hooks:
         schema_hint = h.response_schema or "字符串"
@@ -113,7 +139,6 @@ async def run_hooks_for_event(
         + "\n".join(hook_instructions)
     )
 
-    # Build user message
     user_parts = []
     if state_text:
         user_parts.append(f"【当前状态】\n{state_text}")
@@ -124,8 +149,6 @@ async def run_hooks_for_event(
 
     user_message = "\n\n".join(user_parts)
 
-    # Determine connection: prefer hook-specific, fall back to session connection
-    # If hooks have different connections, use the first non-None one; otherwise session default
     hook_conn = next((h.connection_id for h in hooks if h.connection_id), None)
     effective_conn = hook_conn or connection_id
 
@@ -142,13 +165,11 @@ async def run_hooks_for_event(
         log.exception("hook_runner_llm_failed", session_id=session_id, trigger=trigger)
         return
 
-    # Parse the batched JSON response
     parsed = _extract_json(raw_response)
     if not isinstance(parsed, dict):
         log.warning("hook_runner_parse_failed", session_id=session_id, raw=raw_response[:200])
         return
 
-    # Dispatch individual hook results
     from app.models.schemas import WSMessageOut
 
     for h in hooks:
@@ -167,3 +188,181 @@ async def run_hooks_for_event(
             },
         ))
         log.debug("hook_result_pushed", hook_id=h.id, hook_name=h.name)
+
+        # Process after-hook callback
+        await _process_after_hook_callback(h, result, session_id, push_fn)
+
+
+async def _execute_individual_hook(
+    session_id: str,
+    hook: ChatHook,
+    branch_msgs: list[Message],
+    state: StateData | None,
+    connection_id: str | None,
+    push_fn,
+) -> None:
+    """Execute a single hook with its own LLM call (individual agent mode)."""
+    max_ctx = hook.context_messages
+    recent_msgs = branch_msgs[-max_ctx:] if max_ctx > 0 else []
+
+    conversation_text = "\n".join(
+        f"{'用户' if m.role == 'user' else 'AI'}: {m.content}"
+        for m in recent_msgs
+        if m.role in ("user", "assistant")
+    )
+
+    state_text = ""
+    if hook.include_state and state:
+        state_text = _build_state_summary(state)
+
+    system_prompt = (
+        f"你是一个执行特定分析任务的助手。\n"
+        f"任务：{hook.prompt}\n"
+        f"请严格返回以下格式的结果（{hook.response_schema or '字符串'}），"
+        f"不要添加任何 markdown 格式或额外说明。"
+    )
+
+    user_parts = []
+    if state_text:
+        user_parts.append(f"【当前状态】\n{state_text}")
+    if conversation_text:
+        user_parts.append(f"【最近对话】\n{conversation_text}")
+    else:
+        user_parts.append("（对话内容为空）")
+
+    user_message = "\n\n".join(user_parts)
+
+    effective_conn = hook.connection_id or connection_id
+
+    try:
+        raw_response = await chat_completion(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            connection_id=effective_conn,
+        )
+        log.info("hook_individual_called", session_id=session_id, hook_id=hook.id, hook_name=hook.name)
+    except Exception:
+        log.exception("hook_individual_llm_failed", session_id=session_id, hook_id=hook.id)
+        return
+
+    parsed = _extract_json(raw_response)
+    result = parsed if parsed is not None else raw_response.strip()
+
+    from app.models.schemas import WSMessageOut
+
+    await push_fn(WSMessageOut(
+        type="hook_result",
+        data={
+            "hook_id": hook.id,
+            "hook_name": hook.name,
+            "action": hook.action.model_dump(),
+            "result": result,
+        },
+    ))
+    log.debug("hook_individual_result_pushed", hook_id=hook.id, hook_name=hook.name)
+
+    # Process after-hook callback
+    await _process_after_hook_callback(hook, result, session_id, push_fn)
+
+
+async def _process_after_hook_callback(
+    hook: ChatHook,
+    result: Any,
+    session_id: str,
+    push_fn,
+) -> None:
+    """Handle after-hook callback configuration."""
+    cb = hook.after_hook_callback
+    if not cb or cb.type == "none":
+        return
+
+    from app.models.schemas import WSMessageOut
+
+    if cb.type == "send_message":
+        # Auto-send the hook result as a chat message
+        result_text = json.dumps(result, ensure_ascii=False) if not isinstance(result, str) else result
+        if cb.payload_template:
+            try:
+                result_text = cb.payload_template.format(result=result_text)
+            except Exception:
+                pass
+        await push_fn(WSMessageOut(
+            type="hook_result",
+            data={
+                "hook_id": hook.id,
+                "hook_name": f"{hook.name} (callback)",
+                "action": {"type": "send_message", "panel_title": "", "script": ""},
+                "result": result_text,
+            },
+        ))
+
+    elif cb.type == "trigger_hook" and cb.target_hook_id:
+        # Chain to another hook — push a special result that frontend can handle
+        await push_fn(WSMessageOut(
+            type="hook_result",
+            data={
+                "hook_id": hook.id,
+                "hook_name": hook.name,
+                "action": {
+                    "type": "custom_script",
+                    "panel_title": "",
+                    "script": f"chain_hook('{cb.target_hook_id}', {json.dumps(result, ensure_ascii=False)})",
+                },
+                "result": result,
+            },
+        ))
+
+    elif cb.type == "custom" and cb.condition:
+        try:
+            should_fire = _evaluate_condition(cb.condition, result)
+            if should_fire:
+                await push_fn(WSMessageOut(
+                    type="hook_result",
+                    data={
+                        "hook_id": hook.id,
+                        "hook_name": f"{hook.name} (callback)",
+                        "action": {"type": "show_toast", "panel_title": "", "script": ""},
+                        "result": f"Condition met: {cb.condition}",
+                    },
+                ))
+        except Exception:
+            log.warning("hook_callback_condition_failed", hook_id=hook.id, condition=cb.condition)
+
+
+def _evaluate_condition(condition: str, result: Any) -> bool:
+    """Evaluate a simple condition expression against a hook result."""
+    import operator
+    import re
+
+    if not condition.strip():
+        return True
+
+    # Support simple expressions like "result.score > 0.8" or "result.status == 'done'"
+    # For safety, use a restricted eval with limited builtins
+    safe_globals = {
+        "__builtins__": {
+            "True": True, "False": False, "None": None,
+            "int": int, "float": float, "str": str, "bool": bool,
+            "len": len, "abs": abs, "min": min, "max": max,
+        },
+        "result": result if not isinstance(result, dict) else _dict_to_obj(result),
+        "operator": operator,
+    }
+
+    try:
+        return bool(eval(condition, safe_globals, {}))
+    except Exception:
+        return False
+
+
+class _dict_to_obj:
+    """Convert dict to object for dot-access in condition expressions."""
+
+    def __init__(self, d: dict):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                setattr(self, k, _dict_to_obj(v))
+            else:
+                setattr(self, k, v)

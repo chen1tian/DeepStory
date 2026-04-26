@@ -10,23 +10,28 @@ from app.models.schemas import WSMessageIn, WSMessageOut, MessagesResponse
 from app.services.chat_manager import (
     load_session,
     load_messages,
-    load_summary,
-    load_state,
     get_branch_messages,
-    add_message_to_branch,
     create_branch_from,
     delete_messages_from,
     get_chat_lock,
 )
-from app.services.prompt_builder import build_chat_messages
-from app.services.llm_service import chat_completion_stream
-from app.services.summarizer import should_summarize, incremental_summarize, extract_state
 from app.services.event_bus import event_bus
 from app.storage.user_protagonist_storage import load_user_protagonist
 from app.services.auth_service import decode_access_token
 from app.storage.base import set_user_id
 from app.storage.user_storage import get_user_by_id
 from app.services import room_manager
+from app.agents.tools import (
+    set_push_fn,
+    save_user_message,
+    save_assistant_message,
+    load_context,
+    build_prompt,
+    stream_response,
+    check_should_summarize,
+    summarize_conversation,
+    extract_rpg_state,
+)
 
 log = structlog.get_logger()
 
@@ -216,86 +221,92 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
 
 
 async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broadcast_to: str | None = None) -> None:
-    """Handle a chat message: build context, stream LLM, save, trigger background tasks.
-    
-    If broadcast_to is set, stream tokens to all WS clients of that session
-    in addition to sending to ws directly.
+    """Handle a chat message using agent tools.
+
+    Phase 1 (streaming): save user msg → load context → build prompt → stream → save assistant msg
+    Phase 2 (background): summarize → hooks → extract state → narrator → hooks
+
+    If broadcast_to is set, stream tokens to all WS clients of that session.
     """
     async def _send(msg: WSMessageOut) -> None:
         if broadcast_to:
             await _push_to_session(broadcast_to, msg)
         else:
             await ws.send_text(msg.model_dump_json())
+
+    # Inject the push function into tools' context for this request
+    set_push_fn(_send)
+
     try:
-        # If branching, update active branch first
+        # Handle branching
         parent_id = None
         if msg_in.type == "chat_from_branch" and msg_in.branch_from_message_id:
             await create_branch_from(session_id, msg_in.branch_from_message_id)
             parent_id = msg_in.branch_from_message_id
 
-        # Save user message
-        user_msg = await add_message_to_branch(session_id, "user", msg_in.content, parent_id)
+        # Phase 1, Step 1: Save user message
+        user_msg_dict = await save_user_message(session_id, msg_in.content, parent_id)
 
-        # Load context data
-        session = await load_session(session_id)
-        branch_msgs = await get_branch_messages(session_id)
-        summary = await load_summary(session_id)
-        state = await load_state(session_id)
+        # Phase 1, Step 2: Load context
+        ctx = await load_context(session_id)
+        session_data = ctx["session"]
 
-        # Load user protagonist data for prompt injection
+        # Load room/protagonist data for prompt injection
         user_protagonist = None
         room_players = None
         current_room = room_manager.get_room_by_session(session_id)
         if current_room is not None:
-            # Multiplayer: inject all players' protagonist settings
             room_players = [p.model_dump() for p in current_room.players]
-        elif session and session.user_protagonist_id:
-            user_protagonist = await load_user_protagonist(session.user_protagonist_id)
+        elif session_data and session_data.get("user_protagonist_id"):
+            user_protagonist = await load_user_protagonist(session_data["user_protagonist_id"])
 
-        # Build prompt with token budget
-        # Load narrator directives (and consume one-shots/decrement turns)
+        # Load narrator directives
         from app.services.narrator_service import consume_directives
         narrator_directives = await consume_directives(session_id)
+        narrator_directive_dicts = [d.model_dump() for d in narrator_directives] if narrator_directives else None
 
-        messages, budget_info = await build_chat_messages(
-            system_prompt=session.system_prompt if session else "",
-            state=state,
-            summary=summary,
-            recent_messages=branch_msgs[:-1],  # exclude the user msg we just added
+        # Phase 1, Step 3: Build prompt with token budgeting
+        characters = session_data.get("characters", []) if session_data else []
+        recent_msgs = ctx["branch_messages"][:-1] if len(ctx["branch_messages"]) > 0 else []
+        prompt_result = await build_prompt(
+            system_prompt=session_data.get("system_prompt", "") if session_data else "",
+            state=ctx["state"],
+            summary=ctx["summary"],
+            recent_messages=recent_msgs,
             user_input=msg_in.content,
-            characters=[c.model_dump() for c in session.characters] if session and session.characters else [],
-            user_protagonist=user_protagonist,
-            narrator_directives=narrator_directives if narrator_directives else None,
+            characters=characters,
+            user_protagonist=user_protagonist.model_dump() if user_protagonist and hasattr(user_protagonist, 'model_dump') else user_protagonist,
+            narrator_directives=narrator_directive_dicts,
             room_players=room_players,
         )
 
         # Send token budget info
         await _send(WSMessageOut(
             type="token_budget",
-            data=budget_info,
+            data=prompt_result["budget_info"],
         ))
 
-        # Stream LLM response
-        full_response = ""
-        async for token in chat_completion_stream(messages, connection_id=msg_in.connection_id):
-            full_response += token
-            await _send(WSMessageOut(type="token", content=token))
+        # Phase 1, Step 4: Stream LLM response (tokens pushed via push_fn context)
+        full_response = await stream_response(
+            messages=prompt_result["messages"],
+            connection_id=msg_in.connection_id,
+        )
 
-        # Save assistant message
-        assistant_msg = await add_message_to_branch(session_id, "assistant", full_response)
+        # Phase 1, Step 5: Save assistant message
+        assistant_msg_dict = await save_assistant_message(session_id, full_response)
 
         # Send completion
         await _send(WSMessageOut(
             type="chat_complete",
-            message_id=assistant_msg.id,
+            message_id=assistant_msg_dict["id"],
         ))
 
-        # Trigger background summarization and hooks
+        # Trigger Phase 2 background task
         asyncio.create_task(_background_post_chat(
             session_id,
             connection_id=msg_in.connection_id,
             state_connection_id=msg_in.state_connection_id,
-            last_message_id=assistant_msg.id,
+            last_message_id=assistant_msg_dict["id"],
         ))
 
     except Exception as e:
@@ -309,23 +320,27 @@ async def _background_post_chat(
     state_connection_id: str | None = None,
     last_message_id: str | None = None,
 ) -> None:
-    """Background task: summarize, extract state, and run hooks after chat completes."""
-    from app.services.hook_runner import run_hooks_for_event
+    """Background task using agent tools: summarize, hooks, extract state, narrator."""
+    from app.agents.hook_agent import run_hooks_for_event as agent_run_hooks
+    from app.agents.narrator_agent import run_narrator_evaluation
 
     async def _push(msg: WSMessageOut) -> None:
         await _push_to_session(session_id, msg)
 
+    # Set up push function context for tools called here
+    set_push_fn(_push)
+
     try:
         branch_msgs = await get_branch_messages(session_id)
+        branch_msg_dicts = [m.model_dump() for m in branch_msgs]
 
         # Summarize if needed
-        if await should_summarize(session_id, branch_msgs):
-            await _push_to_session(session_id, WSMessageOut(type="summary_progress", status="running"))
-            await incremental_summarize(session_id, branch_msgs, connection_id=connection_id)
+        if await check_should_summarize(session_id, branch_msg_dicts):
+            await summarize_conversation(session_id, branch_msg_dicts, connection_id=connection_id)
             await event_bus.emit("summary_complete", session_id=session_id)
 
-        # Run chat_complete hooks (before state extraction so they don't wait for it)
-        await run_hooks_for_event(
+        # Run chat_complete hooks
+        await agent_run_hooks(
             session_id=session_id,
             trigger="chat_complete",
             branch_msgs=branch_msgs,
@@ -334,13 +349,14 @@ async def _background_post_chat(
             push_fn=_push,
         )
 
-        # Extract state — use state_connection_id if specified, otherwise fall back to connection_id
+        # Extract state
         effective_state_conn = state_connection_id or connection_id
-        state = await extract_state(session_id, branch_msgs, connection_id=effective_state_conn)
-        await event_bus.emit("state_updated", session_id=session_id, data=state.model_dump())
+        state_dict = await extract_rpg_state(session_id, branch_msg_dicts, connection_id=effective_state_conn)
 
-        # Run state_updated hooks (state is now available)
-        await run_hooks_for_event(
+        # Run state_updated hooks
+        from app.models.schemas import StateData
+        state = StateData(**state_dict) if state_dict else None
+        await agent_run_hooks(
             session_id=session_id,
             trigger="state_updated",
             branch_msgs=branch_msgs,
@@ -349,9 +365,8 @@ async def _background_post_chat(
             push_fn=_push,
         )
 
-        # Run narrator evaluation (after state is available)
-        from app.services.narrator_service import evaluate_and_direct
-        narrator_result = await evaluate_and_direct(
+        # Run narrator evaluation
+        narrator_result = await run_narrator_evaluation(
             session_id=session_id,
             branch_msgs=branch_msgs,
             state=state,

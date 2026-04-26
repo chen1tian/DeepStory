@@ -44,11 +44,16 @@ async def lifespan(app: FastAPI):
     hooks_dir.mkdir(parents=True, exist_ok=True)
     log.info("app_startup", data_dir=str(settings.data_dir))
     await init_db()
+    # Initialize agent registry (no-op if deepagents not installed)
+    from app.agents.registry import agent_registry
+
+    log.info("agent_registry_initialized")
     yield
     # Shutdown
     from app.services.event_bus import event_bus
 
     event_bus.clear()
+    agent_registry.clear()
     log.info("app_shutdown")
 
 

@@ -520,6 +520,13 @@ export interface HookAction {
   script: string;
 }
 
+export interface HookCallback {
+  type: "none" | "send_message" | "trigger_hook" | "custom";
+  target_hook_id: string;
+  payload_template: string;
+  condition: string;
+}
+
 export interface ChatHook {
   id: string;
   name: string;
@@ -532,6 +539,10 @@ export interface ChatHook {
   response_schema: string;
   action: HookAction;
   connection_id: string | null;
+  // Agent-based execution
+  agent_mode: "batch" | "individual";
+  agent_tools: string[];
+  after_hook_callback: HookCallback | null;
   created_at: string;
   updated_at: string;
 }
@@ -547,6 +558,9 @@ export interface CreateHookRequest {
   response_schema?: string;
   action?: Partial<HookAction>;
   connection_id?: string | null;
+  agent_mode?: "batch" | "individual";
+  agent_tools?: string[];
+  after_hook_callback?: HookCallback | null;
 }
 
 export interface UpdateHookRequest {
@@ -560,6 +574,9 @@ export interface UpdateHookRequest {
   response_schema?: string;
   action?: Partial<HookAction>;
   connection_id?: string | null;
+  agent_mode?: "batch" | "individual";
+  agent_tools?: string[];
+  after_hook_callback?: HookCallback | null;
 }
 
 /** Payload inside WSMessageOut.data when type === "hook_result" */

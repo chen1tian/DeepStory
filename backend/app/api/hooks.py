@@ -40,6 +40,9 @@ async def create_hook(req: CreateHookRequest):
         response_schema=req.response_schema,
         action=req.action,
         connection_id=req.connection_id,
+        agent_mode=req.agent_mode,
+        agent_tools=req.agent_tools,
+        after_hook_callback=req.after_hook_callback,
         created_at=now,
         updated_at=now,
     )
