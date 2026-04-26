@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState } from "react";
 import MessageBubble from "./MessageBubble";
 import { useChatStore } from "../stores/chatStore";
+import { useSessionStore } from "../stores/sessionStore";
+import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 
 interface Props {
   onBranch: (messageId: string) => void;
@@ -13,8 +15,25 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
   const streamingContent = useChatStore((s) => s.streamingContent);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const summaryStatus = useChatStore((s) => s.summaryStatus);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
+  const sessions = useSessionStore((s) => s.sessions);
+  const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const fetchUserProtagonists = useUserProtagonistStore((s) => s.fetchUserProtagonists);
+
+  useEffect(() => {
+    if (userProtagonists.length === 0) {
+      fetchUserProtagonists();
+    }
+  }, [userProtagonists.length, fetchUserProtagonists]);
+
+  const session = currentSessionId ? sessions.find((s) => s.id === currentSessionId) : null;
+  const sessionCharacters = session?.characters ?? [];
+  const protagonist = session?.user_protagonist_id
+    ? userProtagonists.find((p) => p.id === session.user_protagonist_id)
+    : null;
 
   const pendingDeleteIdx = pendingDeleteId
     ? messages.findIndex((m) => m.id === pendingDeleteId)
@@ -45,6 +64,9 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
             isConfirming={pendingDeleteId === msg.id}
             onConfirmStart={() => setPendingDeleteId(msg.id)}
             onConfirmCancel={() => setPendingDeleteId(null)}
+            sessionCharacters={sessionCharacters}
+            protagonistAvatarUrl={protagonist?.avatar_url ?? null}
+            protagonistAvatarEmoji={protagonist?.avatar_emoji ?? "🧑"}
           />
         ))}
 
@@ -60,6 +82,7 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
               branch_id: "",
             }}
             isStreaming
+            sessionCharacters={sessionCharacters}
           />
         )}
 

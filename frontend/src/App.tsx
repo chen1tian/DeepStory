@@ -270,8 +270,8 @@ function MainApp() {
           <ConnectionSwitcher />
           <div className="h-4 w-px bg-white/10 mx-1.5" />
           <button
-            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${statePanelOpen ? "bg-white/10 text-white ring-1 ring-inset ring-white/10 shadow-sm" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
-            onClick={toggleStatePanel}
+            className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${rightPanelTab === "state" ? "bg-white/10 text-white ring-1 ring-inset ring-white/10 shadow-sm" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
+            onClick={() => setRightPanelTab("state")}
           >
             <span className="text-[14px]">📊</span> 状态
           </button>
@@ -310,13 +310,9 @@ function MainApp() {
           </button>
           <button
             className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all flex items-center gap-1.5 ${
-              statePanelOpen && rightPanelTab === "narrator" ? "bg-purple-600/20 text-purple-300 ring-1 ring-inset ring-purple-500/20" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
+              rightPanelTab === "narrator" ? "bg-purple-600/20 text-purple-300 ring-1 ring-inset ring-purple-500/20" : "border border-transparent text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
             }`}
-            onClick={() => {
-              if (!statePanelOpen) { toggleStatePanel(); setRightPanelTab("narrator"); }
-              else if (rightPanelTab !== "narrator") { setRightPanelTab("narrator"); }
-              else { toggleStatePanel(); }
-            }}
+            onClick={() => setRightPanelTab("narrator")}
             title="故事导演"
           >
             <span className="text-[14px]">🎬</span> 导演
@@ -341,8 +337,7 @@ function MainApp() {
             )}
           </div>
 
-          {statePanelOpen && (
-            <aside className="fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex flex-col transition-all">
+            <aside className={`fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex-col transition-all ${statePanelOpen ? 'flex' : 'hidden'} md:flex`}>
               {/* 移动端 state面板返回按钮 */}
               <div className="md:hidden flex items-center bg-[var(--bg-secondary)] border-b border-[var(--border)] h-12 px-3 justify-between shrink-0 sticky top-0 z-10 w-full">
                  <span className="font-bold">{rightPanelTab === "narrator" ? "🎬 故事导演" : "📊 状态板"}</span>
@@ -385,7 +380,6 @@ function MainApp() {
                 ) : null}
               </div>
             </aside>
-          )}
         </div>
       </div>
     </div>

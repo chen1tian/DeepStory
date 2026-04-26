@@ -45,16 +45,23 @@ function PendingTurnsDisplay() {
         return (
           <div
             key={userId}
-            className={`flex flex-col items-end animate-in fade-in slide-in-from-bottom-1 duration-200 ${isProcessing ? "opacity-60" : ""}`}
+            className={`flex items-end gap-2 justify-end animate-in fade-in slide-in-from-bottom-1 duration-200 ${isProcessing ? "opacity-60" : ""}`}
           >
-            <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">
-              {player.protagonist_name || player.username}
-            </span>
-            <div
-              className={`max-w-[80%] px-3 py-2 rounded-xl rounded-tr-sm text-[14px] leading-relaxed whitespace-pre-wrap border ${color}`}
-            >
-              {content}
+            <div className="flex flex-col items-end">
+              <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">
+                {player.protagonist_name || player.username}
+              </span>
+              <div
+                className={`max-w-[80%] px-3 py-2 rounded-xl rounded-tr-sm text-[14px] leading-relaxed whitespace-pre-wrap border ${color}`}
+              >
+                {content}
+              </div>
             </div>
+            {player.protagonist_avatar_url ? (
+              <img src={player.protagonist_avatar_url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0 mb-0.5" />
+            ) : (
+              <span className="text-3xl mb-0.5">{player.protagonist_avatar || "🧑"}</span>
+            )}
           </div>
         );
       })}
