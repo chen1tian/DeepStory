@@ -1,8 +1,9 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import MessageBubble from "./MessageBubble";
 import { useChatStore } from "../stores/chatStore";
 import { useSessionStore } from "../stores/sessionStore";
 import { useUserProtagonistStore } from "../stores/userProtagonistStore";
+import { useUIStore } from "../stores/uiStore";
 
 interface Props {
   onBranch: (messageId: string) => void;
@@ -19,6 +20,7 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const sessions = useSessionStore((s) => s.sessions);
   const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
+  const maxMessageCount = useUIStore((s) => s.maxMessageCount);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -30,14 +32,21 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
     }
   }, [userProtagonists.length, fetchUserProtagonists]);
 
+  const displayMessages = useMemo(() => {
+    if (maxMessageCount > 0 && messages.length > maxMessageCount) {
+      return messages.slice(messages.length - maxMessageCount);
+    }
+    return messages;
+  }, [messages, maxMessageCount]);
+
   const session = currentSessionId ? sessions.find((s) => s.id === currentSessionId) : null;
   const sessionCharacters = session?.characters ?? [];
   const protagonist = session?.user_protagonist_id
     ? userProtagonists.find((p) => p.id === session.user_protagonist_id)
     : null;
 
-  const pendingDeleteIdx = pendingDeleteId
-    ? messages.findIndex((m) => m.id === pendingDeleteId)
+  const pendingDeleteDisplayIdx = pendingDeleteId
+    ? displayMessages.findIndex((m) => m.id === pendingDeleteId)
     : -1;
 
   useEffect(() => {
@@ -46,7 +55,7 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6 md:py-8 flex flex-col gap-6 scroll-smooth minimal-scrollbar">
-      {messages.length === 0 && !isStreaming && (
+      {displayMessages.length === 0 && !isStreaming && (
         <div className="m-auto flex flex-col items-center justify-center text-center text-[var(--text-secondary)] mt-20 space-y-3">
           <div className="text-5xl mb-2 opacity-80 drop-shadow-lg">✨</div>
           <h2 className="text-xl font-semibold text-[var(--text-primary)]">开启创作之旅</h2>
@@ -54,14 +63,14 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
         </div>
       )}
 
-        {messages.map((msg, idx) => (
+        {displayMessages.map((msg, idx) => (
           <MessageBubble
             key={msg.id}
             message={msg}
             onBranch={onBranch}
             onDelete={onDelete}
             onResend={onResend}
-            isPendingDelete={pendingDeleteIdx >= 0 && idx >= pendingDeleteIdx}
+            isPendingDelete={pendingDeleteDisplayIdx >= 0 && idx >= pendingDeleteDisplayIdx}
             isConfirming={pendingDeleteId === msg.id}
             onConfirmStart={() => setPendingDeleteId(msg.id)}
             onConfirmCancel={() => setPendingDeleteId(null)}

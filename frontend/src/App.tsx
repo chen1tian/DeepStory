@@ -27,6 +27,7 @@ import DebugPanel from "./components/DebugPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import HookManager from "./components/HookManager";
 import MapOverlay from "./components/MapDisplay";
+import ConfigModal from "./components/ConfigModal";
 import CreateRoomModal from "./components/CreateRoomModal";
 import JoinRoomModal from "./components/JoinRoomModal";
 import "./styles/global.css";
@@ -97,6 +98,9 @@ function MainApp() {
   const user = useAuthStore((s) => s.user);
 
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
+
+  const configOpen = useUIStore((s) => s.configOpen);
+  const setConfigOpen = useUIStore((s) => s.setConfigOpen);
 
   const [showStoryManager, setShowStoryManager] = useState(false);
   const [showStorySelector, setShowStorySelector] = useState(false);
@@ -194,6 +198,7 @@ function MainApp() {
       {showJoinRoom && (
         <JoinRoomModal onClose={() => setShowJoinRoom(false)} />
       )}
+      {configOpen && <ConfigModal />}
       {showStorySelector && (        <StorySelector
           onSelect={handleStorySelect}
           onSkip={handleSkipStory}
@@ -325,6 +330,14 @@ function MainApp() {
             title="退出登录"
           >
             <span className="text-[14px]">🚪</span> 退出
+          </button>
+          <div className="h-4 w-px bg-white/10 mx-1.5" />
+          <button
+            onClick={() => setConfigOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
+            title="配置"
+          >
+            <span className="text-[14px]">⚙️</span> 配置
           </button>
         </div>
 
