@@ -95,6 +95,7 @@ async def build_prompt(
     user_protagonist: dict | None = None,
     narrator_directives: list | None = None,
     room_players: list[dict] | None = None,
+    context_max_tokens_override: int | None = None,
 ) -> dict:
     """Build the full message array with token budgeting for the LLM call."""
     from app.services.chat_manager import SessionMeta
@@ -120,6 +121,7 @@ async def build_prompt(
         user_protagonist=user_protagonist,
         narrator_directives=nd_objects,
         room_players=room_players,
+        context_max_tokens_override=context_max_tokens_override,
     )
 
     return {

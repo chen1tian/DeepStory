@@ -251,6 +251,7 @@ export interface WSMessageIn {
   branch_from_message_id?: string;
   connection_id?: string | null;
   state_connection_id?: string | null;
+  context_max_tokens?: number | null;
 }
 
 export interface WSMessageOut {

@@ -32,12 +32,16 @@ async def build_chat_messages(
     user_protagonist: dict | None = None,
     narrator_directives: list[NarrativeDirective] | None = None,
     room_players: list | None = None,  # list of PlayerInfo dicts for multiplayer
+    context_max_tokens_override: int | None = None,
 ) -> tuple[list[dict], dict]:
     """Build the OpenAI messages array with token budget management.
-    
+
     Returns (messages, budget_info) where budget_info shows token allocation.
     """
-    total_budget = settings.max_context_tokens
+    total_budget = context_max_tokens_override or settings.max_context_tokens
+    # enforce a minimum workable budget to prevent broken prompts
+    if total_budget < 2048:
+        total_budget = 2048
     reserved = settings.reply_reserve_tokens
 
     # 1. System prompt

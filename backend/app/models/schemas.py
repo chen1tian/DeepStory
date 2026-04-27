@@ -646,11 +646,12 @@ class MessagesResponse(BaseModel):
 
 
 class WSMessageIn(BaseModel):
-    type: str  # "chat" | "chat_from_branch" | "ping"
+    type: str  # "chat" | "chat_from_branch" | "ping" | "submit_turn" | "retract_turn" | "force_submit"
     content: str = ""
     branch_from_message_id: str | None = None
     connection_id: str | None = None
     state_connection_id: str | None = None  # override connection for state extraction
+    context_max_tokens: int | None = None  # override max_context_tokens from frontend config
 
 
 class WSMessageOut(BaseModel):

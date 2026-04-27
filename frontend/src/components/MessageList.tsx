@@ -17,6 +17,7 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
   const streamingThinking = useChatStore((s) => s.streamingThinking);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const summaryStatus = useChatStore((s) => s.summaryStatus);
+  const tokenBudget = useChatStore((s) => s.tokenBudget);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const sessions = useSessionStore((s) => s.sessions);
   const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
@@ -102,6 +103,14 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
             <div className="bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-xs font-medium animate-pulse ring-1 ring-inset ring-blue-500/20 backdrop-blur-sm shadow-sm">
               {summaryStatus === "summarizing" ? "🔄 正在提炼上下文记忆..." : "🔄 正在提取情境状态..."}
             </div>
+          </div>
+        )}
+
+        {tokenBudget && tokenBudget.total > 0 && (
+          <div className="flex w-full justify-center pb-1">
+            <span className="text-[11px] text-[var(--text-secondary)]/50">
+              上下文 {tokenBudget.total.toLocaleString()} tokens · {messages.length} 条消息 · 已用 {(tokenBudget.total - tokenBudget.remaining).toLocaleString()}
+            </span>
           </div>
         )}
 

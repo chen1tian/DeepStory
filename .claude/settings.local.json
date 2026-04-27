@@ -14,7 +14,8 @@
       "Bash(python -m py_compile app/api/debug.py)",
       "Bash(python -m py_compile app/services/llm_service.py)",
       "Bash(python -m py_compile app/agents/tools.py)",
-      "Bash(python -m py_compile app/services/chat_manager.py)"
+      "Bash(python -m py_compile app/services/chat_manager.py)",
+      "Bash(python -c \"from app.models.schemas import WSMessageIn; from app.agents.tools import build_prompt; from app.services.prompt_builder import build_chat_messages; print\\('All imports OK'\\)\")"
     ]
   }
 }

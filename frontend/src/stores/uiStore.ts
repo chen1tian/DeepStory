@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 const CONFIG_KEY = "config_max_message_count";
+const CONFIG_CONTEXT_KEY = "config_context_length";
 
 function loadMaxMessageCount(): number {
   try {
@@ -19,6 +20,23 @@ function saveMaxMessageCount(n: number) {
   } catch { /* ignore */ }
 }
 
+function loadContextLength(): number {
+  try {
+    const v = localStorage.getItem(CONFIG_CONTEXT_KEY);
+    if (v !== null) {
+      const n = parseInt(v, 10);
+      if (!isNaN(n) && n >= 2048) return n;
+    }
+  } catch { /* ignore */ }
+  return 8192;
+}
+
+function saveContextLength(n: number) {
+  try {
+    localStorage.setItem(CONFIG_CONTEXT_KEY, String(n));
+  } catch { /* ignore */ }
+}
+
 interface UIState {
   editMode: boolean;
   sidebarOpen: boolean;
@@ -26,6 +44,7 @@ interface UIState {
   showCharacterPanel: boolean;
   configOpen: boolean;
   maxMessageCount: number;
+  contextLength: number;
   toasts: Array<{ id: string; message: string; type: "error" | "info" | "success" }>;
 
   toggleEditMode: () => void;
@@ -34,6 +53,7 @@ interface UIState {
   setShowCharacterPanel: (v: boolean) => void;
   setConfigOpen: (v: boolean) => void;
   setMaxMessageCount: (n: number) => void;
+  setContextLength: (n: number) => void;
   addToast: (message: string, type?: "error" | "info" | "success") => void;
   removeToast: (id: string) => void;
 }
@@ -45,6 +65,7 @@ export const useUIStore = create<UIState>((set) => ({
   showCharacterPanel: false,
   configOpen: false,
   maxMessageCount: loadMaxMessageCount(),
+  contextLength: loadContextLength(),
   toasts: [],
 
   toggleEditMode: () => set((s) => ({ editMode: !s.editMode, showCharacterPanel: false })),
@@ -56,6 +77,11 @@ export const useUIStore = create<UIState>((set) => ({
   setMaxMessageCount: (n) => {
     saveMaxMessageCount(n);
     set({ maxMessageCount: n });
+  },
+
+  setContextLength: (n) => {
+    saveContextLength(n);
+    set({ contextLength: n });
   },
 
   addToast: (message, type = "info") => {

@@ -176,6 +176,7 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
                             content=combined,
                             connection_id=msg_in.connection_id,
                             state_connection_id=msg_in.state_connection_id,
+                            context_max_tokens=msg_in.context_max_tokens,
                         )
                         await _handle_chat(ws, session_id, combined_msg, broadcast_to=session_id)
 
@@ -277,6 +278,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
             user_protagonist=user_protagonist.model_dump() if user_protagonist and hasattr(user_protagonist, 'model_dump') else user_protagonist,
             narrator_directives=narrator_directives,
             room_players=room_players,
+            context_max_tokens_override=msg_in.context_max_tokens,
         )
 
         # Send token budget info

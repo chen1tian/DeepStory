@@ -4,16 +4,23 @@ import { useUIStore } from "../stores/uiStore";
 export default function ConfigModal() {
   const maxMessageCount = useUIStore((s) => s.maxMessageCount);
   const setMaxMessageCount = useUIStore((s) => s.setMaxMessageCount);
+  const contextLength = useUIStore((s) => s.contextLength);
+  const setContextLength = useUIStore((s) => s.setContextLength);
   const setConfigOpen = useUIStore((s) => s.setConfigOpen);
 
   const [inputValue, setInputValue] = useState(String(maxMessageCount || ""));
+  const [contextInputValue, setContextInputValue] = useState(String(contextLength));
 
   const handleSave = () => {
     const n = parseInt(inputValue, 10);
     if (inputValue.trim() === "" || (n >= 0 && !isNaN(n))) {
       setMaxMessageCount(n >= 0 && !isNaN(n) ? n : 0);
-      setConfigOpen(false);
     }
+    const ctx = parseInt(contextInputValue, 10);
+    if (contextInputValue.trim() !== "" && !isNaN(ctx) && ctx >= 2048) {
+      setContextLength(ctx);
+    }
+    setConfigOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -58,6 +65,26 @@ export default function ConfigModal() {
               placeholder="0 = 显示全部"
               className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors"
               autoFocus
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-[var(--text-primary)]">
+              上下文长度
+            </label>
+            <p className="text-xs text-[var(--text-secondary)]">
+              控制 AI 处理上下文窗口大小（tokens）。较大值可记住更多历史，但会增加 token 消耗。默认 8192。
+            </p>
+            <input
+              type="number"
+              min={2048}
+              max={128000}
+              step={1024}
+              value={contextInputValue}
+              onChange={(e) => setContextInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="8192"
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors"
             />
           </div>
         </div>

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Message, TokenBudgetInfo, StateData, WSMessageOut, HookResultPayload } from "../types";
 import { ChatWebSocket } from "../services/websocket";
 import { getMessages, getState, deleteMessagesFrom as apiDeleteMessagesFrom } from "../services/api";
+import { useUIStore } from "./uiStore";
 
 interface ChatState {
   messages: Message[];
@@ -190,7 +191,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     import("./hookStore").then(({ useHookStore }) => {
       useHookStore.getState().clearResults();
     });
-    ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+    ws.send({ type: "chat", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 
   sendBranchMessage: (content: string, fromMessageId: string) => {
@@ -218,7 +219,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     import("./hookStore").then(({ useHookStore }) => {
       useHookStore.getState().clearResults();
     });
-    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+    ws.send({ type: "chat_from_branch", content, branch_from_message_id: fromMessageId, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 
   loadMessages: async (sessionId: string) => {
@@ -272,13 +273,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       branch_id: "main",
     };
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat", content: message.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+    ws.send({ type: "chat", content: message.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 
   submitTurn: (content: string) => {
     const { ws } = get();
     if (!ws) return;
-    ws.send({ type: "submit_turn", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+    ws.send({ type: "submit_turn", content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 
   retractTurn: () => {
@@ -290,6 +291,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   forceSubmit: () => {
     const { ws } = get();
     if (!ws) return;
-    ws.send({ type: "force_submit", content: "", connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId") });
+    ws.send({ type: "force_submit", content: "", connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 }));
