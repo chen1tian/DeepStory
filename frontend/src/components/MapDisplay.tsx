@@ -17,15 +17,15 @@ function AsciiMapContent({
   ascii: string;
   onGoto: (name: string) => void;
 }) {
-  // Split on location markers: ★[name] (current) or [name] (other)
-  const tokens = ascii.split(/(★?\[[^\]]+\])/g);
+  // Split on: ◆[name] (exit), ★[name] (current location), or [name] (other location)
+  const tokens = ascii.split(/([◆★]?\[[^\]]+\])/g);
 
   return (
     <pre
       style={{
-        fontFamily: "'Courier New', Courier, monospace",
+        fontFamily: "'Courier New', 'Noto Sans SC', monospace",
         fontSize: 11,
-        lineHeight: 1.55,
+        lineHeight: 1.5,
         margin: 0,
         whiteSpace: "pre",
         overflowX: "auto",
@@ -33,8 +33,27 @@ function AsciiMapContent({
       }}
     >
       {tokens.map((token, i) => {
+        const isExit = token.startsWith("◆[") && token.endsWith("]");
         const isCurrent = token.startsWith("★[") && token.endsWith("]");
-        const isLocation = !isCurrent && token.startsWith("[") && token.endsWith("]");
+        const isLocation = !isExit && !isCurrent && token.startsWith("[") && token.endsWith("]");
+
+        if (isExit) {
+          const name = token.slice(2, -1);
+          return (
+            <span
+              key={i}
+              onClick={() => onGoto(name)}
+              style={{
+                color: "#f59e0b",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+              title={`出口通往: ${name}（点击前往）`}
+            >
+              {token}
+            </span>
+          );
+        }
 
         if (isCurrent) {
           const name = token.slice(2, -1);
@@ -44,7 +63,7 @@ function AsciiMapContent({
               style={{
                 color: "#38bdf8",
                 fontWeight: "bold",
-                textShadow: "0 0 6px rgba(56,189,248,0.5)",
+                textShadow: "0 0 8px rgba(56,189,248,0.6)",
               }}
               title={`当前位置: ${name}`}
             >
@@ -103,23 +122,29 @@ export default function MapOverlay() {
   const stateConnectionId = useConnectionStore((s) => s.stateConnectionId);
 
   const [collapsed, setCollapsed] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const lastSignatureRef = useRef<string>("");
+  const lastWorldRef = useRef<string>("");
+  const lastLocationRef = useRef<string>("");
   const lastSessionRef = useRef<string>("");
 
   const rpg = stateData?.rpg;
 
-  // Signature changes whenever current location or explored set changes
-  const stateSignature = useMemo(() => {
+  // World signature: explored + connections. When this changes, LLM may regenerate.
+  const worldSignature = useMemo(() => {
     if (!rpg?.scene?.location) return "";
     const explored = (rpg.explored_locations ?? [])
       .map((l) => l.name)
       .sort()
       .join(",");
-    return `${rpg.scene.location}|${explored}`;
+    const conns = JSON.stringify(
+      rpg.region_connections ?? {},
+      Object.keys(rpg.region_connections ?? {}).sort(),
+    );
+    return `${explored}|${conns}`;
   }, [rpg]);
 
   const currentLocation = rpg?.scene?.location ?? "";
@@ -129,18 +154,21 @@ export default function MapOverlay() {
   }, []);
 
   useEffect(() => {
-    if (!currentSessionId || !stateSignature) return;
+    if (!currentSessionId || !currentLocation) return;
 
     // On session switch, clear stale map immediately
     if (currentSessionId !== lastSessionRef.current) {
       lastSessionRef.current = currentSessionId;
-      lastSignatureRef.current = "";
+      lastWorldRef.current = "";
+      lastLocationRef.current = "";
       setMapData(null);
       setError(null);
     }
 
-    if (stateSignature === lastSignatureRef.current) return;
-    lastSignatureRef.current = stateSignature;
+    // Skip if neither world state nor location changed
+    if (worldSignature === lastWorldRef.current && currentLocation === lastLocationRef.current) return;
+    lastWorldRef.current = worldSignature;
+    lastLocationRef.current = currentLocation;
 
     const explored = (rpg?.explored_locations ?? []).map((l) => l.name);
     const connections = rpg?.region_connections ?? {};
@@ -176,18 +204,22 @@ export default function MapOverlay() {
       })
       .finally(() => setGenerating(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stateSignature, currentSessionId]);
+  }, [worldSignature, currentLocation, currentSessionId]);
 
   if (!currentSessionId || !currentLocation) return null;
+
+  const panelWidth = fullscreen ? "min(92vw, 500px)" : 300;
+  const panelMaxH = fullscreen ? "88vh" : 280;
 
   return (
     <div
       style={{
         position: "fixed",
-        bottom: 20,
-        right: 20,
-        zIndex: 40,
-        width: 280,
+        bottom: fullscreen ? "50%" : 20,
+        right: fullscreen ? "50%" : 20,
+        transform: fullscreen ? "translate(50%, 50%)" : "none",
+        zIndex: fullscreen ? 50 : 40,
+        width: panelWidth,
         background: "var(--bg-secondary, #1e293b)",
         border: "1px solid var(--border, #334155)",
         borderRadius: 10,
@@ -195,11 +227,11 @@ export default function MapOverlay() {
         overflow: "hidden",
         fontFamily: "inherit",
         userSelect: "none",
+        transition: "width 0.2s, max-height 0.2s",
       }}
     >
       {/* Header / toggle bar */}
       <div
-        onClick={() => setCollapsed((c) => !c)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -210,18 +242,42 @@ export default function MapOverlay() {
           cursor: "pointer",
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary, #e2e8f0)" }}>
+        <span
+          onClick={() => setCollapsed((c) => !c)}
+          style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary, #e2e8f0)", flex: 1 }}
+        >
           🗺️ 地图{generating ? " …" : ""}
         </span>
-        <span style={{ fontSize: 10, color: "var(--text-secondary, #94a3b8)" }}>
+        <span style={{ fontSize: 10, color: "var(--text-secondary, #94a3b8)", marginRight: 8 }}>
           {currentLocation}
-          {collapsed ? "  ▲" : "  ▼"}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); setFullscreen((f) => !f); }}
+          title={fullscreen ? "退出全屏" : "全屏查看"}
+          style={{
+            background: "none",
+            border: "1px solid var(--border, #334155)",
+            borderRadius: 4,
+            color: "var(--text-secondary, #94a3b8)",
+            cursor: "pointer",
+            fontSize: 12,
+            padding: "1px 6px",
+            marginRight: 4,
+          }}
+        >
+          {fullscreen ? "⤢" : "⤡"}
+        </button>
+        <span
+          onClick={() => setCollapsed((c) => !c)}
+          style={{ fontSize: 10, color: "var(--text-secondary, #94a3b8)", cursor: "pointer" }}
+        >
+          {collapsed ? "▲" : "▼"}
         </span>
       </div>
 
       {/* Body */}
       {!collapsed && (
-        <div style={{ padding: "8px 10px", maxHeight: 220, overflowY: "auto" }}>
+        <div style={{ padding: "8px 10px", maxHeight: panelMaxH, overflowY: "auto", overflowX: "hidden" }}>
           {generating && !mapData?.ascii_map && (
             <div
               style={{
@@ -254,7 +310,7 @@ export default function MapOverlay() {
                 textAlign: "center",
               }}
             >
-              点击紫色地点可预填前往指令
+              点击金色◆出口或紫色地点可预填前往指令
             </div>
           )}
         </div>

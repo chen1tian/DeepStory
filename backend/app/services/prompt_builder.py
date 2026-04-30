@@ -48,6 +48,16 @@ async def build_chat_messages(
     if not system_prompt:
         system_prompt = await _load_template("system.txt")
 
+    if settings.child_mode:
+        safety_prefix = (
+            "【内容安全 — 儿童模式已启用】\n"
+            "你正在与儿童用户对话。严禁生成任何成人内容、暴力描写、性暗示、裸体、色情、血腥恐怖、自残自杀、"
+            "毒品酒精滥用、仇恨言论或任何不适合未成年人的内容。如果对话中出现了上述违规内容的尝试或暗示，"
+            "你必须拒绝继续该话题，仅回复：「抱歉，我无法进行相关对话。如需帮助，请切换至适当话题。」"
+            "不要解释原因，不要展开描述。\n\n"
+        )
+        system_prompt = safety_prefix + system_prompt
+
     # Append protagonist setting(s) to system prompt
     if room_players:
         # Multiplayer: inject each player's protagonist as a separate block

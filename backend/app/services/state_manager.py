@@ -228,20 +228,87 @@ def build_rpg_summary(rpg: RPGStateData) -> RPGStateSummary:
 
 
 # ─────────────────────────────────────────────────────────────
-# ASCII map generation (cached per location/explored-locations)
+# ASCII terrain map generation (30x30, cached per location)
 # ─────────────────────────────────────────────────────────────
 
 import hashlib  # noqa: E402
 
 
-def _map_cache_key(location: str, explored: list[str]) -> str:
-    content = (location or "") + "|" + ",".join(sorted(explored))
+def _location_map_key(location: str, exits: list[str]) -> str:
+    """Cache key: location name + sorted exits.
+    只有当该地点的出口变化时（新发现通路），才重新生成地形图。
+    """
+    content = (location or "") + "|" + ",".join(sorted(set(exits)))
     return hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
 
 
+def _load_map_cache(session_id: str):
+    """Load the map cache dict. Returns {"maps": {...}} or empty dict."""
+    import json
+    from pathlib import Path
+    from app.storage.file_storage import _session_dir
+    path = _session_dir(session_id) / "map_cache.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+
+async def _save_map_cache(session_id: str, cache: dict):
+    """Persist the map cache dict."""
+    from app.storage.file_storage import write_json as _wj
+    await _wj(session_id, "map_cache.json", cache)
+
+
 async def get_cached_map(session_id: str) -> dict | None:
-    from app.storage.file_storage import read_json as _rj
-    return await _rj(session_id, "map_cache.json")
+    """Return the full map_cache.json content or None."""
+    cache = _load_map_cache(session_id)
+    return cache if cache else None
+
+
+def _build_terrain_prompt(
+    location: str,
+    exits: list[str],
+    explored: list[str],
+) -> str:
+    """Build the LLM prompt for a terrain map of a specific location."""
+    exit_lines: list[str] = []
+    if exits:
+        directions = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"]
+        for i, dest in enumerate(exits):
+            d = directions[i % len(directions)]
+            exit_lines.append(f"  {d}侧 → {dest}")
+    exit_text = "\n".join(exit_lines) if exit_lines else "  （暂无已知出口）"
+
+    other_locs = [l for l in explored if l != location]
+    other_text = "、".join(other_locs) if other_locs else "（暂无）"
+
+    return (
+        f"请为RPG场景「{location}」绘制一幅30x30的字符地形图。\n\n"
+        f"已探索的其他地点：{other_text}\n\n"
+        f"从本地图可以前往的地点（出口）：\n{exit_text}\n\n"
+        "地形符号参考：\n"
+        "  ≈ ~  水域（河流、湖泊、海岸）\n"
+        "  . ·  草地 / 平原\n"
+        "  ^  森林 / 密林\n"
+        "  # ▲  山峦 / 岩石 / 高地\n"
+        "  ,  沙地 / 沙滩 / 荒漠\n"
+        "  = ≡  道路 / 石板路\n"
+        "  @  建筑 / 房屋 / 城镇中心\n"
+        "  *  树木 / 灌木 / 特殊标志物\n"
+        "  +  栅栏 / 围墙\n"
+        "  %  沼泽 / 湿地\n\n"
+        "标记规则（重要）：\n"
+        f"1. 玩家当前位置用 ★ 标记，放在场景合理的入口位置\n"
+        "2. 出口统一标记为 ◆[地点名]，放置在对应方向的边界上\n"
+        "3. 地图四周用合适的边界字符（~ = # 等）围起来\n"
+        "4. 地形过渡要自然，不要出现突兀的变化\n"
+        "5. 适当添加装饰性地形，让地图丰富有层次\n"
+        "6. 地图宽度不超过30列，高度不超过30行\n"
+        "7. 只输出地图本身，不要任何额外说明、标题或markdown标记"
+    )
 
 
 async def generate_ascii_map(
@@ -251,52 +318,34 @@ async def generate_ascii_map(
     explored: list[str],
     connection_id: str | None = None,
 ) -> dict:
-    """Generate (or return cached) ASCII art map. Only regenerates when location/explored changes."""
+    """Generate (or return cached) 80x80 terrain map for the current location.
+    每个地点一张地形图，缓存在 map_cache.json 中。
+    再次进入同一地点直接返回缓存，不重新生成。
+    """
     from app.services.llm_service import chat_completion
-    from app.storage.file_storage import read_json as _rj, write_json as _wj
 
-    key = _map_cache_key(location, explored)
+    exits = connections.get(location, [])
+    map_key = _location_map_key(location, exits)
 
-    cached = await _rj(session_id, "map_cache.json")
-    if cached and cached.get("cache_key") == key:
-        return cached
+    cache = _load_map_cache(session_id)
+    maps = cache.get("maps", {}) if isinstance(cache, dict) else {}
 
-    explored_set = set(explored)
-    seen_pairs: set[tuple] = set()
-    conn_lines: list[str] = []
-    for from_loc, tos in connections.items():
-        if from_loc not in explored_set:
-            continue
-        for to in tos:
-            if to not in explored_set:
-                continue
-            pair = tuple(sorted([from_loc, to]))
-            if pair not in seen_pairs:
-                seen_pairs.add(pair)
-                conn_lines.append(f"  {from_loc} ↔ {to}")
+    # Cache hit — same location, same exits
+    if map_key in maps:
+        return {"cache_key": map_key, "ascii_map": maps[map_key]}
 
-    loc_text = "、".join(explored) if explored else "（暂无）"
-    conn_text = "\n".join(conn_lines) if conn_lines else "  （暂无已知路径）"
-
-    prompt = (
-        f"请为RPG游戏绘制一幅字符画地图。\n\n"
-        f"当前位置：{location or '未知'}\n"
-        f"已探索地点：{loc_text}\n"
-        f"已知路径：\n{conn_text}\n\n"
-        "绘图规则：\n"
-        "1. 用 ─ │ ┼ ┤ ├ ┬ ┴ 等线框字符绘制路径，或用空格表示位置关系\n"
-        "2. 当前位置标记为 ★[名称]，其余地点标记为 [名称]\n"
-        "3. 宽度不超过34个字符，高度不超过16行\n"
-        "4. 根据连接关系合理布局，相邻地点用线段相连\n"
-        "5. 只输出地图本身，不要任何额外说明、标题或markdown标记"
-    )
+    # Generate new terrain map for this location
+    prompt = _build_terrain_prompt(location, exits, explored)
 
     try:
         result = await chat_completion(
             [
                 {
                     "role": "system",
-                    "content": "你是RPG字符画地图生成器。只返回地图，不含任何说明文字或markdown标记。",
+                    "content": (
+                        "你是RPG字符地形图生成器。只返回地图本身，不含任何说明文字或markdown标记。"
+                        "地形分布要合理自然，边界完整。"
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -312,20 +361,23 @@ async def generate_ascii_map(
         log.exception("map_generation_failed", session_id=session_id)
         ascii_map = _fallback_map(location, explored, connections)
 
-    cache_data = {"cache_key": key, "ascii_map": ascii_map}
-    await _wj(session_id, "map_cache.json", cache_data)
-    return cache_data
+    # Ensure cache dict structure
+    if "maps" not in cache or not isinstance(cache.get("maps"), dict):
+        cache = {"maps": {}}
+    cache["maps"][map_key] = ascii_map
+    await _save_map_cache(session_id, cache)
+    return {"cache_key": map_key, "ascii_map": ascii_map}
 
 
 def _fallback_map(
     location: str, explored: list[str], connections: dict[str, list[str]]
 ) -> str:
-    explored_set = set(explored)
-    lines = ["=== 已探索区域 ===", ""]
-    for loc in explored:
-        prefix = "★" if loc == location else "○"
-        lines.append(f" {prefix} [{loc}]")
-        neighbors = [nb for nb in connections.get(loc, []) if nb in explored_set and nb != loc]
-        for nb in neighbors:
-            lines.append(f"    └─ [{nb}]")
+    """Simple text fallback when LLM generation fails."""
+    exits = connections.get(location, [])
+    lines = [f"~~~ {location} ~~~", ""]
+    lines.append("地形: 未知（地图生成失败）")
+    lines.append(f"★ 当前位置: {location}")
+    if exits:
+        for e in exits:
+            lines.append(f"◆[{e}]")
     return "\n".join(lines)

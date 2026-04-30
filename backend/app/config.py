@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     summary_max_tokens: int = 2000
     state_max_tokens: int = 1000
 
+    # Content safety
+    child_mode: bool = False
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8000
