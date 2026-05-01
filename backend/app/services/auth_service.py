@@ -10,12 +10,22 @@ from app.config import settings
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+_BCRYPT_MAX_LENGTH = 72
+
+
+def _truncate_password(plain: str) -> str:
+    encoded = plain.encode("utf-8")
+    if len(encoded) <= _BCRYPT_MAX_LENGTH:
+        return plain
+    return encoded[:_BCRYPT_MAX_LENGTH].decode("utf-8", errors="ignore")
+
+
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return _pwd_context.hash(_truncate_password(plain))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _pwd_context.verify(_truncate_password(plain), hashed)
 
 
 def create_access_token(user_id: str, username: str) -> str:

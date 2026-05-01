@@ -68,3 +68,8 @@ frontend/
     types/        # TypeScript 类型定义
     styles/       # 全局样式
 ```
+
+## docker 运行
+```
+docker run -d --name deepstory -p 8031:8000 -v /opt/deepstory_data:/app/data chen1tian/deepstory:latest
+```
