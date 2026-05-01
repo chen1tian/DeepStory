@@ -57,7 +57,7 @@ async def list_connections() -> list[dict[str, Any]]:
     if len(result) == 0:
         default_conn = {
             "id": str(uuid.uuid4()),
-            "name": "默认连接 (从 .env 加载)",
+            "name": "默认连接",
             "connection_type": "llm",
             "api_key": settings.api_key or "",
             "api_base_url": str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1",
