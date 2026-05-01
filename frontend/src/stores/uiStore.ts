@@ -11,7 +11,7 @@ function loadMaxMessageCount(): number {
       if (!isNaN(n) && n >= 0) return n;
     }
   } catch { /* ignore */ }
-  return 0;
+  return 20;
 }
 
 function saveMaxMessageCount(n: number) {
@@ -28,7 +28,7 @@ function loadContextLength(): number {
       if (!isNaN(n) && n >= 2048) return n;
     }
   } catch { /* ignore */ }
-  return 8192;
+  return 81920;
 }
 
 function saveContextLength(n: number) {

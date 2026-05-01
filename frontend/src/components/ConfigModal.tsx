@@ -62,7 +62,7 @@ export default function ConfigModal() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="0 = 显示全部"
+              placeholder="20"
               className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors"
               autoFocus
             />
@@ -73,7 +73,7 @@ export default function ConfigModal() {
               上下文长度
             </label>
             <p className="text-xs text-[var(--text-secondary)]">
-              控制 AI 处理上下文窗口大小（tokens）。较大值可记住更多历史，但会增加 token 消耗。默认 8192。
+              控制 AI 处理上下文窗口大小（tokens）。较大值可记住更多历史，但会增加 token 消耗。默认 81920。
             </p>
             <input
               type="number"
@@ -83,7 +83,7 @@ export default function ConfigModal() {
               value={contextInputValue}
               onChange={(e) => setContextInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="8192"
+              placeholder="81920"
               className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors"
             />
           </div>
