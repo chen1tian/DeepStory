@@ -120,7 +120,18 @@ app.mount("/api/images", StaticFiles(directory=str(images_dir)), name="images")
 
 # Serve frontend static files in production (Docker)
 if settings.static_dir and settings.static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(settings.static_dir), html=True), name="frontend")
+    from fastapi.responses import FileResponse  # noqa: E402
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(settings.static_dir / "index.html")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = settings.static_dir / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(settings.static_dir / "index.html")
 
 
 @app.get("/api/health")
