@@ -33,6 +33,10 @@ body {
   display: flex;
 }
 
+.app-layout[data-immersive="true"] [data-immersive-hide="true"] {
+  display: none !important;
+}
+
 /* Scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--scrollbar-track); }

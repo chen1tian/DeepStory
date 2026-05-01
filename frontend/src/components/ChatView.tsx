@@ -69,7 +69,7 @@ function PendingTurnsDisplay() {
   );
 }
 
-export default function ChatView() {
+export default function ChatView({ immersiveMode = false }: { immersiveMode?: boolean }) {
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const sendBranchMessage = useChatStore((s) => s.sendBranchMessage);
   const deleteMessagesFrom = useChatStore((s) => s.deleteMessagesFrom);
@@ -138,11 +138,11 @@ export default function ChatView() {
 
   return (
     <div className="relative flex flex-col h-full bg-[var(--bg-primary)]">
-      <RoomPanel />
+      {!immersiveMode && <RoomPanel />}
       <MessageList onBranch={handleBranch} onDelete={handleDelete} onResend={handleResend} />
-      <PendingTurnsDisplay />
-      <SceneActions />
-      <HookResultPanel />
+      {!immersiveMode && <PendingTurnsDisplay />}
+      {!immersiveMode && <SceneActions />}
+      {!immersiveMode && <HookResultPanel />}
       <div className="w-full relative shadow-[0_-20px_40px_-5px_rgba(26,26,46,0.9)]">
         <MessageInput />
         <TokenBudgetBar />

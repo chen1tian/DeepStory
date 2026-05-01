@@ -32,6 +32,18 @@ import CreateRoomModal from "./components/CreateRoomModal";
 import JoinRoomModal from "./components/JoinRoomModal";
 import "./styles/global.css";
 
+type ImmersivePanel = "sessions" | "tools" | "state" | "narrator" | null;
+
+function shouldStartInImmersiveMode(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const touchLikeScreen = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const narrowViewport = window.innerWidth <= 900;
+  return touchLikeScreen || narrowViewport;
+}
+
 function Toasts() {
   const toasts = useUIStore((s) => s.toasts);
   const removeToast = useUIStore((s) => s.removeToast);
@@ -52,6 +64,37 @@ function Toasts() {
         </div>
       ))}
     </div>
+  );
+}
+
+function FloatingIconButton({
+  icon,
+  label,
+  active = false,
+  disabled = false,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={`h-11 w-11 rounded-2xl border text-lg shadow-lg backdrop-blur-md transition-all ${
+        active
+          ? "border-blue-400/60 bg-blue-500/25 text-white"
+          : "border-white/10 bg-slate-950/70 text-[var(--text-secondary)] hover:bg-slate-900/90 hover:text-white"
+      } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+    >
+      {icon}
+    </button>
   );
 }
 
@@ -116,6 +159,8 @@ function MainApp() {
   const [showJoinRoom, setShowJoinRoom] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<"state" | "narrator">("state");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [immersiveMode, setImmersiveMode] = useState(() => shouldStartInImmersiveMode());
+  const [immersivePanel, setImmersivePanel] = useState<ImmersivePanel>(null);
 
   const loadArc = useNarratorStore((s) => s.loadArc);
   const arc = useNarratorStore((s) => s.arc);
@@ -143,6 +188,21 @@ function MainApp() {
     }
   }, [currentSessionId, loadArc]);
 
+  const toggleImmersiveMode = () => {
+    if (!immersiveMode && editMode) {
+      toggleEditMode();
+    }
+    setMobileMenuOpen(false);
+    setImmersivePanel(null);
+    setImmersiveMode((value) => !value);
+  };
+
+  const toggleImmersivePanel = (panel: Exclude<ImmersivePanel, null>) => {
+    setImmersiveMode(true);
+    setMobileMenuOpen(false);
+    setImmersivePanel((value) => (value === panel ? null : panel));
+  };
+
   const handleNewSession = () => setShowStorySelector(true);
 
   const handleStorySelect = async (storyId: string, openerIndex: number, presetId?: string) => {
@@ -157,10 +217,16 @@ function MainApp() {
     connectToSession(session.id);
   };
 
+  const immersivePanelTitle =
+    immersivePanel === "sessions" ? "会话与导航" :
+    immersivePanel === "tools" ? "快捷工具" :
+    immersivePanel === "narrator" ? "故事导演" :
+    "状态板";
+
   return (
-    <div className="app-layout h-[100dvh] flex flex-col w-full text-[var(--text-primary)]">
+    <div className="app-layout h-[100dvh] flex flex-col w-full text-[var(--text-primary)]" data-immersive={immersiveMode ? "true" : "false"}>
       <Toasts />
-      <MapOverlay />
+      {!immersiveMode && <MapOverlay />}
 
       {showStoryManager && (
         <StoryManager onClose={() => setShowStoryManager(false)} />
@@ -207,43 +273,239 @@ function MainApp() {
         />
       )}
 
-      {/* 移动端顶部标题栏 */}
-      <div className="md:hidden flex items-center bg-[var(--bg-secondary)] border-b border-[var(--border)] h-12 px-3 justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <button 
-            className="p-1 px-2 text-[var(--accent)] rounded hover:bg-[var(--bg-tertiary)]"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            ☰ 菜单 
-          </button>
-          <span className="font-bold text-sm truncate max-w-[150px]">
-            {sessions.find(s => s.id === currentSessionId)?.title || 'Creative Chat'}
-          </span>
+      {immersiveMode && (
+        <>
+          <div className="fixed left-3 top-3 z-[70] flex flex-col gap-2 md:left-4 md:top-4">
+            <FloatingIconButton
+              icon={immersiveMode ? "⤢" : "⤡"}
+              label={immersiveMode ? "退出沉浸模式" : "进入沉浸模式"}
+              active={immersiveMode}
+              onClick={toggleImmersiveMode}
+            />
+            <FloatingIconButton
+              icon="☰"
+              label="会话与导航"
+              active={immersivePanel === "sessions"}
+              onClick={() => toggleImmersivePanel("sessions")}
+            />
+            <FloatingIconButton
+              icon="🧰"
+              label="快捷工具"
+              active={immersivePanel === "tools"}
+              onClick={() => toggleImmersivePanel("tools")}
+            />
+            <FloatingIconButton
+              icon="📊"
+              label="状态板"
+              active={immersivePanel === "state"}
+              disabled={!currentSessionId}
+              onClick={() => toggleImmersivePanel("state")}
+            />
+            <FloatingIconButton
+              icon="🎬"
+              label="故事导演"
+              active={immersivePanel === "narrator"}
+              disabled={!currentSessionId}
+              onClick={() => toggleImmersivePanel("narrator")}
+            />
+          </div>
+
+          {immersivePanel && (
+            <div className="fixed left-16 right-3 top-3 bottom-3 z-[65] md:left-20 md:right-auto md:w-[380px] rounded-3xl border border-white/10 bg-slate-950/88 shadow-[0_28px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/5">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">Immersive</div>
+                  <div className="text-sm font-semibold text-white">{immersivePanelTitle}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImmersivePanel(null)}
+                  className="h-9 w-9 rounded-full text-lg text-[var(--text-secondary)] hover:bg-white/10 hover:text-white transition-colors"
+                  aria-label="关闭浮层"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="h-[calc(100%-73px)] overflow-y-auto minimal-scrollbar">
+                {immersivePanel === "sessions" && (
+                  <div className="flex h-full flex-col p-3">
+                    <SessionList
+                      onNewSession={() => { handleNewSession(); setImmersivePanel(null); }}
+                      onShowHistory={() => { setShowHistoryPanel(true); setImmersivePanel(null); }}
+                      onManageStories={() => { setShowStoryManager(true); setImmersivePanel(null); }}
+                      onManageProtagonists={() => { setShowProtagonistManager(true); setImmersivePanel(null); }}
+                      onManageUserProtagonists={() => { setShowUserProtagonistManager(true); setImmersivePanel(null); }}
+                      onManagePresets={() => { setShowPresetManager(true); setImmersivePanel(null); }}
+                      onManageConnections={() => { setShowConnectionManager(true); setImmersivePanel(null); }}
+                    />
+                  </div>
+                )}
+
+                {immersivePanel === "tools" && (
+                  <div className="space-y-4 p-4">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                      <div className="mb-3 text-[12px] font-medium text-[var(--text-secondary)]">界面模式</div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className={`flex-1 rounded-xl px-3 py-2 text-[13px] font-medium transition-all ${
+                            !editMode ? "bg-blue-600 text-white" : "bg-white/5 text-[var(--text-secondary)] hover:text-white"
+                          }`}
+                          onClick={() => { if (editMode) toggleEditMode(); }}
+                        >
+                          💬 聊天
+                        </button>
+                        <button
+                          type="button"
+                          className={`flex-1 rounded-xl px-3 py-2 text-[13px] font-medium transition-all ${
+                            editMode ? "bg-blue-600 text-white" : "bg-white/5 text-[var(--text-secondary)] hover:text-white"
+                          }`}
+                          onClick={() => { if (!editMode) toggleEditMode(); }}
+                        >
+                          🎨 编辑
+                        </button>
+                      </div>
+                    </div>
+
+                    {currentSessionId && (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-3">
+                        <div>
+                          <div className="mb-2 text-[12px] font-medium text-[var(--text-secondary)]">预设</div>
+                          <PresetSwitcher sessionId={currentSessionId} />
+                        </div>
+                        <div>
+                          <div className="mb-2 text-[12px] font-medium text-[var(--text-secondary)]">连接</div>
+                          <ConnectionSwitcher />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={!currentSessionId}
+                        onClick={() => { setShowDebugPanel(true); setImmersivePanel(null); }}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        🔍 调试
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowHookManager(true); setImmersivePanel(null); }}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8"
+                      >
+                        🔗 Hooks
+                      </button>
+                      {!roomState && currentSessionId && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowCreateRoom(true); setImmersivePanel(null); }}
+                          className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8"
+                        >
+                          🎲 多人
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!!roomState}
+                        onClick={() => { setShowJoinRoom(true); setImmersivePanel(null); }}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        🚪 加入
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setConfigOpen(true); setImmersivePanel(null); }}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8"
+                      >
+                        ⚙️ 配置
+                      </button>
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        🚪 退出
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {immersivePanel === "state" && (
+                  currentSessionId ? <div className="p-4"><StatePanel /></div> : <div className="p-4 text-sm text-[var(--text-secondary)]">请先选择一个会话。</div>
+                )}
+
+                {immersivePanel === "narrator" && (
+                  currentSessionId ? (
+                    <NarratorPanel
+                      sessionId={currentSessionId}
+                      onOpenEditor={() => { setShowArcEditor(true); setImmersivePanel(null); }}
+                    />
+                  ) : (
+                    <div className="p-4 text-sm text-[var(--text-secondary)]">请先选择一个会话。</div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {!immersiveMode && (
+        <div className="fixed right-3 top-3 z-[72] flex flex-col gap-2 md:hidden">
+          <FloatingIconButton
+            icon="⤡"
+            label="进入沉浸模式"
+            onClick={toggleImmersiveMode}
+          />
+          <FloatingIconButton
+            icon="📊"
+            label="打开状态板"
+            active={statePanelOpen}
+            disabled={!currentSessionId}
+            onClick={toggleStatePanel}
+          />
         </div>
-        <div className="flex gap-1 text-sm">
+      )}
+
+      {/* 移动端顶部标题栏 */}
+      <div className={`${immersiveMode ? "hidden" : "flex"} md:hidden items-center gap-2 bg-[var(--bg-secondary)] border-b border-[var(--border)] min-h-14 pl-3 pr-16 py-2 shrink-0`}>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <button 
+            className="h-9 px-3 text-[var(--accent)] rounded-xl bg-white/5 hover:bg-[var(--bg-tertiary)] shrink-0"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="打开菜单"
+          >
+            ☰
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">Session</div>
+            <span className="block font-bold text-sm truncate">
+              {sessions.find(s => s.id === currentSessionId)?.title || 'Creative Chat'}
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-1 text-sm shrink-0">
           <button
-            className={`px-2 py-1 rounded ${!editMode ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)]"}`}
+            className={`h-9 min-w-9 px-2 rounded-xl ${!editMode ? "bg-[var(--accent)] text-white" : "bg-white/5 text-[var(--text-secondary)]"}`}
             onClick={() => { if (editMode) toggleEditMode(); }}
+            aria-label="切换到聊天模式"
           >
             💬
           </button>
           <button
-            className={`px-2 py-1 rounded ${editMode ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)]"}`}
+            className={`h-9 min-w-9 px-2 rounded-xl ${editMode ? "bg-[var(--accent)] text-white" : "bg-white/5 text-[var(--text-secondary)]"}`}
             onClick={() => { if (!editMode) toggleEditMode(); }}
+            aria-label="切换到编辑模式"
           >
             🎨
-          </button>
-          <button
-            className={`px-2 py-1 rounded text-lg ${statePanelOpen ? "text-[var(--accent)]" : "text-[var(--text-secondary)]"}`}
-            onClick={toggleStatePanel}
-          >
-            📊
           </button>
         </div>
       </div>
 
       {/* 侧边栏/抽屉（包含所有导航项） */}
-      <nav className={`top-nav flex-col md:flex-row md:flex transition-transform w-full ${mobileMenuOpen ? 'flex h-auto max-h-[50vh] overflow-y-auto w-full z-10 sticky top-0 shadow-lg border-b border-[var(--border)]' : 'hidden md:flex'}`}>
+      <nav className={`${immersiveMode ? "hidden" : ""} top-nav flex-col md:flex-row md:flex transition-transform w-full ${mobileMenuOpen ? 'flex h-auto max-h-[50vh] overflow-y-auto w-full z-10 sticky top-0 shadow-lg border-b border-[var(--border)]' : 'hidden md:flex'}`}>
         <SessionList
           onNewSession={() => { handleNewSession(); setMobileMenuOpen(false); }}
           onShowHistory={() => { setShowHistoryPanel(true); setMobileMenuOpen(false); }}
@@ -256,7 +518,7 @@ function MainApp() {
       {/* Main */}
       <div className="main-content flex-1 flex flex-col min-h-0 bg-[var(--bg-primary)]">
         {/* PC端顶部工具栏 */}
-        <div className="hidden md:flex items-center h-12 border-b border-white/[0.08] px-4 gap-2 bg-[var(--bg-secondary)] shrink-0 relative z-10 shadow-sm">
+        <div className={`${immersiveMode ? "hidden" : "hidden md:flex"} items-center h-12 border-b border-white/[0.08] px-4 gap-2 bg-[var(--bg-secondary)] shrink-0 relative z-10 shadow-sm`}>
           <button
             className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all border border-transparent ${!editMode ? "bg-blue-600 text-white shadow-sm ring-1 ring-white/10 ring-inset" : "text-[var(--text-secondary)] hover:text-white hover:bg-white/5"}`}
             onClick={() => { if (editMode) toggleEditMode(); }}
@@ -339,6 +601,13 @@ function MainApp() {
           >
             <span className="text-[14px]">⚙️</span> 配置
           </button>
+          <button
+            onClick={toggleImmersiveMode}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
+            title="沉浸模式"
+          >
+            <span className="text-[14px]">⤡</span> 沉浸
+          </button>
         </div>
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -346,11 +615,11 @@ function MainApp() {
             {editMode ? (
               <EditMode />
             ) : (
-              <ChatView />
+              <ChatView immersiveMode={immersiveMode} />
             )}
           </div>
 
-            <aside className={`fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex-col transition-all ${statePanelOpen ? 'flex' : 'hidden'} md:flex`}>
+            <aside className={`${immersiveMode ? "hidden" : ""} fixed md:static inset-0 z-50 md:z-auto bg-[var(--bg-secondary)] border-l border-[var(--border)] md:w-80 w-full flex-col transition-all ${statePanelOpen ? 'flex' : 'hidden'} md:flex`}>
               {/* 移动端 state面板返回按钮 */}
               <div className="md:hidden flex items-center bg-[var(--bg-secondary)] border-b border-[var(--border)] h-12 px-3 justify-between shrink-0 sticky top-0 z-10 w-full">
                  <span className="font-bold">{rightPanelTab === "narrator" ? "🎬 故事导演" : "📊 状态板"}</span>

@@ -20,7 +20,7 @@ export default function SceneActions() {
   };
 
   return (
-    <div className="w-full bg-[var(--bg-primary)] px-4 py-2.5 flex flex-wrap gap-2.5 border-t border-[var(--border)] relative z-10 shrink-0 shadow-sm overflow-x-auto minimal-scrollbar">
+    <div data-immersive-hide="true" className="w-full bg-[var(--bg-primary)] px-4 py-2.5 flex flex-wrap gap-2.5 border-t border-[var(--border)] relative z-10 shrink-0 shadow-sm overflow-x-auto minimal-scrollbar">
       {interactables.length > 0 && (
         <div className="flex items-center gap-1.5 flex-nowrap bg-[var(--bg-secondary)] px-2.5 py-1.5 rounded-xl border border-[var(--border)] shadow-inner">
           <span className="text-xs text-amber-500/80 mr-1 whitespace-nowrap font-medium tracking-wide">🔍 物品</span>

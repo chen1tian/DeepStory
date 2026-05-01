@@ -213,6 +213,7 @@ export default function MapOverlay() {
 
   return (
     <div
+      data-immersive-hide="true"
       style={{
         position: "fixed",
         bottom: fullscreen ? "50%" : 20,

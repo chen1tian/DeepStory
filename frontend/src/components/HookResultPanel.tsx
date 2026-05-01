@@ -227,7 +227,7 @@ export default function HookResultPanel() {
   });
 
   return (
-    <div className="w-full bg-[var(--bg-primary)] border-t border-[var(--border)] px-4 py-3 md:px-8 shrink-0">
+    <div data-immersive-hide="true" className="w-full bg-[var(--bg-primary)] border-t border-[var(--border)] px-4 py-3 md:px-8 shrink-0">
       <div className="max-w-4xl mx-auto flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-gray-500 font-medium tracking-wide uppercase">
