@@ -38,10 +38,14 @@ async def should_summarize(session_id: str, branch_messages: list[Message]) -> b
 
 
 async def _load_summary(session_id: str) -> SummaryData:
-    data = await read_json(session_id, "summary.json")
-    if data is None:
+    try:
+        data = await read_json(session_id, "summary.json")
+        if data is None:
+            return SummaryData()
+        return SummaryData(**data)
+    except Exception:
+        log.exception("summary_load_failed", session_id=session_id)
         return SummaryData()
-    return SummaryData(**data)
 
 
 async def incremental_summarize(session_id: str, branch_messages: list[Message], connection_id: str | None = None) -> SummaryData:
@@ -84,7 +88,11 @@ async def incremental_summarize(session_id: str, branch_messages: list[Message],
 
 async def extract_state(session_id: str, branch_messages: list[Message], connection_id: str | None = None) -> StateData:
     """Extract RPG state delta from recent messages and apply to full state."""
-    current_state = await get_state(session_id)
+    try:
+        current_state = await get_state(session_id)
+    except Exception:
+        log.exception("extract_state_load_failed", session_id=session_id)
+        current_state = StateData()
 
     recent = branch_messages[-10:]
     if not recent:

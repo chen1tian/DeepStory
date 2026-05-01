@@ -13,10 +13,14 @@ log = structlog.get_logger()
 
 
 async def get_state(session_id: str) -> StateData:
-    data = await read_json(session_id, "state.json")
-    if data is None:
+    try:
+        data = await read_json(session_id, "state.json")
+        if data is None:
+            return StateData()
+        return StateData(**data)
+    except Exception:
+        log.exception("state_load_failed", session_id=session_id)
         return StateData()
-    return StateData(**data)
 
 
 async def update_state(session_id: str, state: StateData) -> None:
@@ -43,12 +47,26 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
                     continue
                 if k == "status_effects" and isinstance(v, list):
                     from app.models.schemas import StatusEffect
-                    char.status_effects = [StatusEffect(**e) if isinstance(e, dict) else e for e in v]
+                    converted = []
+                    for e in v:
+                        if isinstance(e, StatusEffect):
+                            converted.append(e)
+                        elif isinstance(e, dict):
+                            converted.append(StatusEffect(**e))
+                        else:
+                            converted.append(StatusEffect(name=str(e)))
+                    char.status_effects = converted
                 elif k == "injuries" and isinstance(v, list):
                     char.injuries = v
                 elif k == "relationships" and isinstance(v, list):
                     from app.models.schemas import Relationship
-                    char.relationships = [Relationship(**r) if isinstance(r, dict) else r for r in v]
+                    converted = []
+                    for r in v:
+                        if isinstance(r, Relationship):
+                            converted.append(r)
+                        elif isinstance(r, dict):
+                            converted.append(Relationship(**r))
+                    char.relationships = converted
                 elif k == "tags" and isinstance(v, list):
                     for tag in v:
                         if tag not in char.tags:
@@ -101,13 +119,35 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
         for k, v in delta.scene_changes.items():
             if k == "objects" and isinstance(v, list):
                 from app.models.schemas import SceneObject
-                scene.objects = [SceneObject(**o) if isinstance(o, dict) else o for o in v]
+                converted = []
+                for o in v:
+                    if isinstance(o, SceneObject):
+                        converted.append(o)
+                    elif isinstance(o, dict):
+                        converted.append(SceneObject(**o))
+                    elif isinstance(o, str):
+                        converted.append(SceneObject(name=o))
+                scene.objects = converted
             elif k == "exits" and isinstance(v, list):
                 from app.models.schemas import SceneExit
-                scene.exits = [SceneExit(**e) if isinstance(e, dict) else e for e in v]
+                converted = []
+                for e in v:
+                    if isinstance(e, SceneExit):
+                        converted.append(e)
+                    elif isinstance(e, dict):
+                        converted.append(SceneExit(**e))
+                scene.exits = converted
             elif k == "npcs" and isinstance(v, list):
                 from app.models.schemas import SceneNPC
-                scene.npcs = [SceneNPC(**n) if isinstance(n, dict) else n for n in v]
+                converted = []
+                for n in v:
+                    if isinstance(n, SceneNPC):
+                        converted.append(n)
+                    elif isinstance(n, dict):
+                        converted.append(SceneNPC(**n))
+                    elif isinstance(n, str):
+                        converted.append(SceneNPC(name=n))
+                scene.npcs = converted
             elif hasattr(scene, k):
                 setattr(scene, k, v)
         # Track explored location

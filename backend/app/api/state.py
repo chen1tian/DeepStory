@@ -17,7 +17,13 @@ async def get_session_state(session_id: str):
     room = await room_manager.get_or_load_room(session_id)
     if room is not None:
         set_user_id(room.host_user_id)
-    state = await get_state(session_id)
+    try:
+        state = await get_state(session_id)
+    except Exception:
+        import structlog
+        log = structlog.get_logger()
+        log.exception("get_session_state_failed", session_id=session_id)
+        state = StateData()
     return state
 
 

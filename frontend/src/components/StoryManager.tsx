@@ -33,20 +33,20 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
-      <div className="w-[90vw] max-w-[1000px] h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+      <div className="w-[calc(100vw-1rem)] max-w-[1000px] h-[calc(100dvh-1rem)] md:w-[90vw] md:h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-3 md:px-5 md:py-4 border-b border-[var(--border)] flex flex-wrap items-center gap-3 bg-[var(--bg-secondary)]">
           <h2 className="text-base font-semibold">📚 故事管理</h2>
           <button className="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-lg text-[13px] cursor-pointer border-none transition-colors" onClick={handleAdd}>
             + 新建故事
           </button>
-          <div className="flex-1" />
+          <div className="hidden md:block flex-1" />
           <button className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors" onClick={onClose}>
             ✕
           </button>
         </div>
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col md:flex-row overflow-hidden min-h-0">
           {/* Left: story list */}
-          <div className="w-[300px] min-w-[300px] border-r border-[var(--border)] overflow-y-auto p-3 minimal-scrollbar">
+          <div className="w-full md:w-[300px] md:min-w-[300px] border-b md:border-b-0 md:border-r border-[var(--border)] overflow-y-auto p-3 minimal-scrollbar max-h-[38vh] md:max-h-none">
             {loading && <div className="text-sm text-[var(--text-secondary)] p-3">加载中…</div>}
             {!loading && stories.length === 0 && (
               <div className="text-sm text-[var(--text-secondary)] p-3">暂无故事，点击上方按钮创建</div>
@@ -79,7 +79,7 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Right: edit form */}
-          <div className="flex-1 overflow-y-auto p-5 minimal-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-5 minimal-scrollbar">
             {editingStory ? (
               <StoryForm
                 key={editingStory.id}
@@ -89,9 +89,9 @@ export default function StoryManager({ onClose }: { onClose: () => void }) {
                 userProtagonists={userProtagonists}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-3">
-                <div className="text-5xl opacity-30">📖</div>
-                <div>选择或新建一个故事来编辑</div>
+              <div className="flex flex-col items-center justify-center h-full min-h-[180px] text-[var(--text-secondary)] gap-3 text-center px-4">
+                <div className="text-4xl md:text-5xl opacity-30">📖</div>
+                <div className="max-w-[16rem] leading-relaxed">选择或新建一个故事来编辑</div>
               </div>
             )}
           </div>
@@ -263,7 +263,7 @@ function StoryForm({
             角色池为空，请先在角色池中创建角色
           </div>
         )}
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {protagonists.map((p) => {
             const checked = form.cast_ids.includes(p.id);
             return (
@@ -395,9 +395,9 @@ function StoryForm({
         ))}
       </div>
 
-      <div className="pt-2 flex justify-end">
+      <div className="pt-2 flex justify-stretch md:justify-end">
         <button
-          className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50"
+          className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50 w-full md:w-auto"
           onClick={handleSave}
           disabled={saving}
         >

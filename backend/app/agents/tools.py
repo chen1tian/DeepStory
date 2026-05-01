@@ -71,11 +71,36 @@ async def save_assistant_message(
 
 
 async def load_context(session_id: str) -> dict:
-    """Load all session context: session meta, branch messages, summary, and state."""
+    """Load all session context: session meta, branch messages, summary, and state.
+
+    Each step is independently guarded so a single corruption (e.g. bad state.json)
+    cannot block the chat — the damaged piece is replaced with a safe default.
+    """
+    from app.models.schemas import StateData, SummaryData
+
+    # Session — critical; if this fails the chat cannot proceed
     session = await load_session(session_id)
-    branch_msgs = await get_branch_messages(session_id)
-    summary = await load_summary(session_id)
-    state = await load_state(session_id)
+
+    # Branch messages — critical
+    try:
+        branch_msgs = await get_branch_messages(session_id)
+    except Exception:
+        log.exception("load_context_messages_failed", session_id=session_id)
+        branch_msgs = []
+
+    # Summary — non-critical; use empty default on failure
+    try:
+        summary = await load_summary(session_id)
+    except Exception:
+        log.exception("load_context_summary_failed", session_id=session_id)
+        summary = SummaryData()
+
+    # State — non-critical; use empty default on failure
+    try:
+        state = await load_state(session_id)
+    except Exception:
+        log.exception("load_context_state_failed", session_id=session_id)
+        state = StateData()
 
     return {
         "session": session.model_dump() if session else None,

@@ -40,17 +40,25 @@ async def load_messages(session_id: str) -> list[Message]:
 
 
 async def load_summary(session_id: str) -> SummaryData:
-    data = await read_json(session_id, "summary.json")
-    if data is None:
+    try:
+        data = await read_json(session_id, "summary.json")
+        if data is None:
+            return SummaryData()
+        return SummaryData(**data)
+    except Exception:
+        log.exception("load_summary_failed", session_id=session_id)
         return SummaryData()
-    return SummaryData(**data)
 
 
 async def load_state(session_id: str) -> StateData:
-    data = await read_json(session_id, "state.json")
-    if data is None:
+    try:
+        data = await read_json(session_id, "state.json")
+        if data is None:
+            return StateData()
+        return StateData(**data)
+    except Exception:
+        log.exception("load_state_failed", session_id=session_id)
         return StateData()
-    return StateData(**data)
 
 
 async def save_message(session_id: str, message: Message) -> None:

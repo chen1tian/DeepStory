@@ -40,15 +40,15 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onCancel}>
-      <div className="w-[90vw] max-w-[960px] h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+      <div className="w-[calc(100vw-1rem)] max-w-[960px] h-[calc(100dvh-1rem)] md:w-[90vw] md:h-[80vh] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-3 md:px-5 md:py-4 border-b border-[var(--border)] flex flex-wrap items-center gap-3 bg-[var(--bg-secondary)]">
           <h2 className="text-base font-semibold">选择故事开始对话</h2>
-          <div className="flex-1" />
+          <div className="hidden md:block flex-1" />
           {presets.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto order-3 md:order-none">
               <label className="text-[13px] text-[var(--text-secondary)]">预设：</label>
               <select
-                className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none"
+                className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-md px-2.5 py-1.5 text-[13px] outline-none flex-1 md:flex-none min-w-0"
                 value={selectedPresetId || ""}
                 onChange={(e) => setSelectedPresetId(e.target.value || null)}
               >
@@ -104,9 +104,9 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
             </button>
           </div>
         ) : (
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-4 minimal-scrollbar">
-              <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-1 flex-col md:flex-row overflow-hidden min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 minimal-scrollbar min-h-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {stories.map((s) => (
                   <div
                     key={s.id}
@@ -137,7 +137,7 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
             </div>
 
             {selectedStory && (
-              <div className="w-[300px] min-w-[300px] border-l border-[var(--border)] overflow-y-auto p-4 minimal-scrollbar flex flex-col gap-3">
+              <div className="w-full md:w-[300px] md:min-w-[300px] border-t md:border-t-0 md:border-l border-[var(--border)] overflow-y-auto p-4 minimal-scrollbar flex flex-col gap-3 max-h-[40vh] md:max-h-none">
                 <h3 className="text-[15px] font-semibold" style={{ color: selectedStory.color || "var(--accent)" }}>
                   {selectedStory.title}
                 </h3>
@@ -195,7 +195,7 @@ export default function StorySelector({ onSelect, onSkip, onCancel, onManagePres
                 )}
 
                 <button
-                  className="mt-auto bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer border-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="mt-auto bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer border-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed w-full"
                   onClick={() => onSelect(selectedStory.id, selectedOpener, selectedPresetId || undefined)}
                   disabled={noPresets}
                 >

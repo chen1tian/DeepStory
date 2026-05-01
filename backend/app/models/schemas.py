@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Message(BaseModel):
@@ -102,6 +102,34 @@ class RPGCharacter(BaseModel):
     # Social
     relationships: list[Relationship] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)  # ["曾救过村长女儿", "被黑风寨通缉"]
+
+    @field_validator('status_effects', mode='before')
+    @classmethod
+    def coerce_status_effects(cls, v):
+        if isinstance(v, list):
+            return [StatusEffect(name=item) if isinstance(item, str) else item for item in v]
+        return v
+
+    @field_validator('equipment', mode='before')
+    @classmethod
+    def coerce_equipment(cls, v):
+        if isinstance(v, list):
+            return [EquipmentItem(name=item) if isinstance(item, str) else item for item in v]
+        return v
+
+    @field_validator('skills', mode='before')
+    @classmethod
+    def coerce_skills(cls, v):
+        if isinstance(v, list):
+            return [Skill(name=item) if isinstance(item, str) else item for item in v]
+        return v
+
+    @field_validator('relationships', mode='before')
+    @classmethod
+    def coerce_relationships(cls, v):
+        if isinstance(v, list):
+            return [Relationship(npc=item) if isinstance(item, str) else item for item in v]
+        return v
 
 
 class InventoryItem(BaseModel):
