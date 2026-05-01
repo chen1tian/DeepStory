@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { randomId } from "../utils/randomId";
 
 const CONFIG_KEY = "config_max_message_count";
 const CONFIG_CONTEXT_KEY = "config_context_length";
@@ -85,7 +86,7 @@ export const useUIStore = create<UIState>((set) => ({
   },
 
   addToast: (message, type = "info") => {
-    const id = crypto.randomUUID();
+    const id = randomId();
     set((s) => ({ toasts: [...s.toasts, { id, message, type }] }));
     setTimeout(() => {
       set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));

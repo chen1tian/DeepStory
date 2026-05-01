@@ -3,6 +3,7 @@ import type { Message, TokenBudgetInfo, StateData, WSMessageOut, HookResultPaylo
 import { ChatWebSocket } from "../services/websocket";
 import { getMessages, getState, deleteMessagesFrom as apiDeleteMessagesFrom } from "../services/api";
 import { useUIStore } from "./uiStore";
+import { randomId } from "../utils/randomId";
 
 interface ChatState {
   messages: Message[];
@@ -70,7 +71,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const { streamingContent, streamingThinking, messages } = get();
           if (streamingContent || streamingThinking) {
             const newMsg: Message = {
-              id: msg.message_id || crypto.randomUUID(),
+              id: msg.message_id || randomId(),
               parent_id: messages.length > 0 ? messages[messages.length - 1].id : null,
               role: "assistant",
               content: streamingContent,
@@ -177,7 +178,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (isStreaming) throw new Error("正在生成回复中，请等待完成后再发送");
 
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       parent_id: messages.length > 0 ? messages[messages.length - 1].id : null,
       role: "user",
       content,
@@ -205,7 +206,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const trimmed = branchIdx >= 0 ? messages.slice(0, branchIdx + 1) : messages;
 
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       parent_id: fromMessageId,
       role: "user",
       content,
@@ -264,7 +265,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Re-add the user message locally
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       parent_id: trimmed.length > 0 ? trimmed[trimmed.length - 1].id : null,
       role: "user",
       content: message.content,

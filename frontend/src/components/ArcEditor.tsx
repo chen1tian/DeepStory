@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNarratorStore } from "../stores/narratorStore";
 import { useConnectionStore } from "../stores/connectionStore";
 import type { StoryNode, CreateArcRequest, UpdateArcRequest, StoryNodeStatus } from "../types";
+import { randomId } from "../utils/randomId";
 
 interface Props {
   sessionId: string;
@@ -183,7 +184,7 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
 
   const handleAddNode = () => {
     const newNode: StoryNode = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       title: `节点 ${localNodes.length + 1}`,
       description: "",
       conditions: "",
