@@ -365,6 +365,12 @@ export interface TestConnectionResult {
   message: string;
 }
 
+export interface FetchModelsResult {
+  success: boolean;
+  models: string[];
+  message: string;
+}
+
 // --- Image Upload & Generation ---
 
 export interface UploadImageResult {

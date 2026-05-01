@@ -27,6 +27,7 @@ import type {
   UploadImageResult,
   GenerateImageRequest,
   GenerateImageResult,
+  FetchModelsResult,
   ChatHook,
   CreateHookRequest,
   UpdateHookRequest,
@@ -303,6 +304,9 @@ export const deleteConnection = (id: string) =>
 
 export const testConnection = (id: string) =>
   request<TestConnectionResult>(`/connections/${id}/test`, { method: "POST" });
+
+export const fetchModels = (id: string) =>
+  request<FetchModelsResult>(`/connections/${id}/models`, { method: "POST" });
 
 // Session system prompt
 export const updateSessionSystemPrompt = (

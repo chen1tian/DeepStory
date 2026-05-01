@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useConnectionStore } from "../stores/connectionStore";
+import { fetchModels as fetchModelsApi } from "../services/api";
 import type { Connection, ConnectionType, ImageGenConfig, TestConnectionResult } from "../types";
 
 // --- Preset templates for image generation ---
@@ -166,6 +167,9 @@ function ConnectionForm({
   const { testConnection } = useConnectionStore();
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [testing, setTesting] = useState(false);
+  const [modelList, setModelList] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelsError, setFetchModelsError] = useState<string | null>(null);
 
   const isImageGen = connection.connection_type === "image_generation";
 
@@ -217,6 +221,27 @@ function ConnectionForm({
       setTestResult({ success: false, message: "测试请求失败" });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleFetchModels = async () => {
+    // Save first, then fetch models
+    await onSave(form);
+    setFetchingModels(true);
+    setFetchModelsError(null);
+    setModelList([]);
+    try {
+      const result = await fetchModelsApi(connection.id);
+      if (result.success) {
+        setModelList(result.models);
+        setFetchModelsError(null);
+      } else {
+        setFetchModelsError(result.message);
+      }
+    } catch {
+      setFetchModelsError("查询模型列表失败");
+    } finally {
+      setFetchingModels(false);
     }
   };
 
@@ -323,12 +348,35 @@ function ConnectionForm({
         <label className="text-[13px] font-medium text-[var(--text-secondary)]">
           {form.connection_type === "image_generation" ? "模型 ID" : "模型名称"}
         </label>
-        <input
-          className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
-          value={form.model_name}
-          onChange={(e) => update("model_name", e.target.value)}
-          placeholder={form.connection_type === "image_generation" ? "doubao-seedream-3-0-t2i-250415" : "gpt-4o-mini"}
-        />
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input
+              className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
+              value={form.model_name}
+              onChange={(e) => update("model_name", e.target.value)}
+              placeholder={form.connection_type === "image_generation" ? "doubao-seedream-3-0-t2i-250415" : "gpt-4o-mini"}
+              list={`model-list-${connection.id}`}
+            />
+            <datalist id={`model-list-${connection.id}`}>
+              {modelList.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          </div>
+          <button
+            className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] px-3 py-2 rounded-lg text-[12px] cursor-pointer transition-colors disabled:opacity-50 whitespace-nowrap"
+            onClick={handleFetchModels}
+            disabled={fetchingModels || testing}
+          >
+            {fetchingModels ? "查询中..." : "📋 获取模型"}
+          </button>
+        </div>
+        {fetchModelsError && (
+          <div className="text-[12px] text-red-400">{fetchModelsError}</div>
+        )}
+        {modelList.length > 0 && !fetchModelsError && (
+          <div className="text-[12px] text-green-400">已加载 {modelList.length} 个模型，可从下拉列表选择或手动输入</div>
+        )}
       </div>
 
       {/* Image gen specific fields */}

@@ -88,6 +88,68 @@ async def delete_connection(cid: str):
     return {"status": "deleted"}
 
 
+@router.post("/connections/{cid}/models")
+async def list_models(cid: str):
+    """Query the provider's /models endpoint and return available model IDs."""
+    data = await load_connection(cid)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    connection_type = data.get("connection_type", "llm")
+    if connection_type == ConnectionType.IMAGE_GENERATION:
+        return {"success": False, "models": [], "message": "文生图连接不支持查询模型列表"}
+
+    return await _fetch_models(data)
+
+
+async def _fetch_models(data: dict) -> dict:
+    """Fetch model list from an OpenAI-compatible /models endpoint."""
+    import httpx
+
+    api_key = data.get("api_key", "")
+    api_base_url = data.get("api_base_url", "").rstrip("/")
+
+    if not api_key:
+        return {"success": False, "models": [], "message": "API Key 不能为空"}
+    if not api_base_url:
+        return {"success": False, "models": [], "message": "API Base URL 不能为空"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = f"{api_base_url}/models"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            resp = await client.get(url, headers=headers)
+
+            if resp.status_code == 200:
+                body = resp.json()
+                raw_models = body.get("data", [])
+                model_ids = [m.get("id", "") for m in raw_models if m.get("id")]
+                return {"success": True, "models": model_ids, "message": f"查询到 {len(model_ids)} 个模型"}
+            elif resp.status_code == 401 or resp.status_code == 403:
+                return {"success": False, "models": [], "message": f"认证失败 (HTTP {resp.status_code})"}
+            elif resp.status_code == 404:
+                return {"success": False, "models": [], "message": "该 API 不支持 /models 端点"}
+            else:
+                error_msg = ""
+                try:
+                    body = resp.json()
+                    error_msg = body.get("error", {}).get("message", "") or body.get("message", "")
+                except Exception:
+                    error_msg = resp.text[:200]
+                return {"success": False, "models": [], "message": f"HTTP {resp.status_code}: {error_msg[:100]}"}
+
+    except httpx.TimeoutException:
+        return {"success": False, "models": [], "message": "连接超时，请检查 API Base URL"}
+    except httpx.ConnectError:
+        return {"success": False, "models": [], "message": "无法连接服务器，请检查 API Base URL"}
+    except Exception as e:
+        log.error("fetch_models_error", error=str(e))
+        return {"success": False, "models": [], "message": f"查询异常: {str(e)[:100]}"}
+
+
 @router.post("/connections/{cid}/test")
 async def test_connection(cid: str):
     """Test a connection's API accessibility."""

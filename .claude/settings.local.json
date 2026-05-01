@@ -17,7 +17,8 @@
       "Bash(python -m py_compile app/services/chat_manager.py)",
       "Bash(python -c \"from app.models.schemas import WSMessageIn; from app.agents.tools import build_prompt; from app.services.prompt_builder import build_chat_messages; print\\('All imports OK'\\)\")",
       "Bash(python -c \"from app.services.state_manager import _world_state_key, _overlay_star, _fallback_map, generate_ascii_map; print\\('Imports OK'\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(dir /s /b \"h:\\\\Dev\\\\Temp\\\\DeepDemo1\\\\frontend\")"
     ]
   }
 }
