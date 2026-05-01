@@ -118,6 +118,10 @@ images_dir = settings.data_dir / "images"
 images_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/api/images", StaticFiles(directory=str(images_dir)), name="images")
 
+# Serve frontend static files in production (Docker)
+if settings.static_dir and settings.static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(settings.static_dir), html=True), name="frontend")
+
 
 @app.get("/api/health")
 async def health():

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Paths
     data_dir: Path = Path(__file__).resolve().parent.parent / "data"
     prompts_dir: Path = Path(__file__).resolve().parent.parent / "prompts"
+    static_dir: Path | None = None  # Frontend build output, served in production
 
     # WebSocket
     ws_heartbeat_interval: int = 30
