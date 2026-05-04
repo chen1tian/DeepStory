@@ -83,10 +83,40 @@ class Relationship(BaseModel):
     note: str = ""
 
 
+class RelationshipStage(BaseModel):
+    min: int = 0
+    max: int = 100
+    label: str = ""
+    description: str = ""
+
+
+class RelationshipMetricConfig(BaseModel):
+    name: str
+    description: str = ""
+    min_value: int = 0
+    max_value: int = 100
+    initial_value: int = 0
+    stages: list[RelationshipStage] = Field(default_factory=list)
+
+
+class RelationshipMetricState(BaseModel):
+    name: str
+    value: int = 0
+    stage: str = ""
+    stage_description: str = ""
+    note: str = ""
+    last_changed: str = ""
+
+
 class RPGCharacter(BaseModel):
     name: str
     description: str = ""
     is_protagonist: bool = False
+    # Presence tracking
+    location: str = ""
+    sub_location: str = ""
+    presence: str = "unknown"  # present, away, unknown
+    last_seen: str = ""
     # Attributes
     health: int = 100
     max_health: int = 100
@@ -101,6 +131,7 @@ class RPGCharacter(BaseModel):
     skills: list[Skill] = Field(default_factory=list)
     # Social
     relationships: list[Relationship] = Field(default_factory=list)
+    relationship_metrics: list[RelationshipMetricState] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)  # ["曾救过村长女儿", "被黑风寨通缉"]
 
     @field_validator('status_effects', mode='before')
@@ -131,6 +162,13 @@ class RPGCharacter(BaseModel):
             return [Relationship(npc=item) if isinstance(item, str) else item for item in v]
         return v
 
+    @field_validator('relationship_metrics', mode='before')
+    @classmethod
+    def coerce_relationship_metrics(cls, v):
+        if isinstance(v, list):
+            return [RelationshipMetricState(name=item) if isinstance(item, str) else item for item in v]
+        return v
+
 
 class InventoryItem(BaseModel):
     name: str
@@ -158,11 +196,14 @@ class SceneNPC(BaseModel):
     name: str
     attitude: str = ""
     status: str = ""
+    location: str = ""
 
 
 class MapLocation(BaseModel):
     name: str
     discovered_at: str = ""
+    last_visited: str = ""
+    visit_count: int = 0
     notes: str = ""
 
 
@@ -319,6 +360,7 @@ class Protagonist(BaseModel):
     setting: str = ""  # character background / personality / description
     avatar_emoji: str = "🧑"
     avatar_url: str | None = None  # image URL from upload or AI generation
+    relationship_metrics: list[RelationshipMetricConfig] = Field(default_factory=list)
     is_default: bool = False
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -334,6 +376,7 @@ class SessionCharacter(BaseModel):
     setting: str = ""
     avatar_emoji: str = "🧑"
     avatar_url: str | None = None  # image URL from upload or AI generation
+    relationship_metrics: list[RelationshipMetricConfig] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -344,6 +387,7 @@ class CreateSessionCharacterRequest(BaseModel):
     setting: str = ""
     avatar_emoji: str = "🧑"
     avatar_url: str | None = None
+    relationship_metrics: list[RelationshipMetricConfig] = Field(default_factory=list)
 
 
 class UpdateSessionCharacterRequest(BaseModel):
@@ -351,6 +395,7 @@ class UpdateSessionCharacterRequest(BaseModel):
     setting: str | None = None
     avatar_emoji: str | None = None
     avatar_url: str | None = None
+    relationship_metrics: list[RelationshipMetricConfig] | None = None
 
 
 class CreateProtagonistRequest(BaseModel):
@@ -358,6 +403,7 @@ class CreateProtagonistRequest(BaseModel):
     setting: str = ""
     avatar_emoji: str = "🧑"
     avatar_url: str | None = None
+    relationship_metrics: list[RelationshipMetricConfig] = Field(default_factory=list)
     is_default: bool = False
 
 
@@ -366,6 +412,7 @@ class UpdateProtagonistRequest(BaseModel):
     setting: str | None = None
     avatar_emoji: str | None = None
     avatar_url: str | None = None
+    relationship_metrics: list[RelationshipMetricConfig] | None = None
     is_default: bool | None = None
 
 

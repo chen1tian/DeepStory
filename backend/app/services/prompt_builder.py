@@ -22,6 +22,57 @@ async def _load_template(name: str) -> str:
     return _template_cache[name]
 
 
+def _format_relationship_metric_configs(metrics: list | object) -> list[str]:
+    if not isinstance(metrics, list):
+        return []
+
+    lines: list[str] = []
+    for metric in metrics:
+        if not isinstance(metric, dict):
+            metric = metric.model_dump() if hasattr(metric, "model_dump") else {}
+        name = metric.get("name", "")
+        if not name:
+            continue
+        min_value = metric.get("min_value", 0)
+        max_value = metric.get("max_value", 100)
+        initial_value = metric.get("initial_value", 0)
+        description = metric.get("description", "")
+        stage_parts = []
+        for stage in metric.get("stages", []):
+            if not isinstance(stage, dict):
+                stage = stage.model_dump() if hasattr(stage, "model_dump") else {}
+            label = stage.get("label", "")
+            if not label:
+                continue
+            stage_parts.append(
+                f"{stage.get('min', 0)}-{stage.get('max', 0)} {label}"
+                + (f"（{stage.get('description')}）" if stage.get("description") else "")
+            )
+        line = f"- {name}: {min_value}-{max_value}, 初始{initial_value}"
+        if description:
+            line += f", {description}"
+        if stage_parts:
+            line += "; 阶段: " + " / ".join(stage_parts)
+        lines.append(line)
+    return lines
+
+
+def _format_relationship_metric_states(characters: list) -> list[str]:
+    lines: list[str] = []
+    for char in characters:
+        metrics = getattr(char, "relationship_metrics", [])
+        if not metrics:
+            continue
+        metric_text = []
+        for metric in metrics:
+            stage = f"（{metric.stage}" + (f": {metric.stage_description}" if metric.stage_description else "") + "）" if metric.stage else ""
+            note = f"，原因/备注: {metric.note}" if metric.note else ""
+            metric_text.append(f"{metric.name} {metric.value}{stage}{note}")
+        if metric_text:
+            lines.append(f"- {char.name}: " + "; ".join(metric_text))
+    return lines
+
+
 async def build_chat_messages(
     system_prompt: str,
     state: StateData | None,
@@ -105,8 +156,13 @@ async def build_chat_messages(
         for c in characters:
             name = c.get("name", "") if isinstance(c, dict) else getattr(c, "name", "")
             setting = c.get("setting", "") if isinstance(c, dict) else getattr(c, "setting", "")
-            if name and setting:
-                char_parts.append(f"- {name}: {setting}")
+            relationship_metrics = c.get("relationship_metrics", []) if isinstance(c, dict) else getattr(c, "relationship_metrics", [])
+            if name and (setting or relationship_metrics):
+                char_line = f"- {name}: {setting}" if setting else f"- {name}"
+                metric_lines = _format_relationship_metric_configs(relationship_metrics)
+                if metric_lines:
+                    char_line += "\n  关系字段:\n" + "\n".join(f"  {line}" for line in metric_lines)
+                char_parts.append(char_line)
         if char_parts:
             cast_header = "【演员表】以下角色是故事中的固定角色，请在合适的时机安排他们出场并保持其人设一致：\n"
             system_prompt = system_prompt + "\n\n" + cast_header + "\n".join(char_parts)
@@ -135,6 +191,27 @@ async def build_chat_messages(
 
         # Constraints from status effects and injuries
         rpg = state.rpg
+        if rpg.scene.location:
+            away_chars = [
+                c for c in rpg.characters
+                if not c.is_protagonist and c.presence == "away" and c.location
+            ]
+            if away_chars:
+                away_text = "; ".join(
+                    f"{c.name}在{c.location}{('·' + c.sub_location) if c.sub_location else ''}"
+                    for c in away_chars[:8]
+                )
+                parts.append(f"【不在当前场景】{away_text}")
+
+        if rpg.explored_locations:
+            visited = [loc.name for loc in rpg.explored_locations if loc.name]
+            if visited:
+                parts.append(f"【已到访地点】{', '.join(visited[-12:])}")
+
+        relationship_lines = _format_relationship_metric_states(rpg.characters)
+        if relationship_lines:
+            parts.append("【角色关系阶段】\n" + "\n".join(relationship_lines))
+
         protagonist = next((c for c in rpg.characters if c.is_protagonist), None)
         if protagonist:
             constraints = []

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import structlog
+from datetime import datetime
 
 from app.models.schemas import (
     StateData, RPGStateData, RPGStateSummary, RPGStateDelta,
     RPGCharacter, InventoryItem, StateChangeEvent, MapLocation,
+    RelationshipMetricConfig, RelationshipMetricState,
 )
 from app.storage.file_storage import read_json, write_json
 
@@ -33,6 +35,10 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
     rpg = state.rpg
 
     rpg.turn_count += 1
+    previous_location = rpg.scene.location or ""
+    now = datetime.now().isoformat()
+    relationship_configs = await _load_relationship_metric_configs(session_id)
+    _ensure_relationship_metric_states(rpg, relationship_configs, now)
 
     # 1. Character updates
     char_by_name = {c.name: c for c in rpg.characters}
@@ -40,10 +46,19 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
         name = upd.get("name", "")
         if not name:
             continue
+        metric_updates = upd.get("relationship_metrics", [])
         if name in char_by_name:
             char = char_by_name[name]
             for k, v in upd.items():
                 if k == "name":
+                    continue
+                if k == "relationship_metrics":
+                    _apply_relationship_metric_updates(
+                        char,
+                        v,
+                        relationship_configs.get(name, []),
+                        now,
+                    )
                     continue
                 if k == "status_effects" and isinstance(v, list):
                     from app.models.schemas import StatusEffect
@@ -75,7 +90,16 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
                     setattr(char, k, v)
         else:
             # New character
-            rpg.characters.append(RPGCharacter(**upd))
+            new_data = {k: v for k, v in upd.items() if k != "relationship_metrics"}
+            rpg.characters.append(RPGCharacter(**new_data))
+            char_by_name[name] = rpg.characters[-1]
+            _ensure_character_metric_states(char_by_name[name], relationship_configs.get(name, []), now)
+            _apply_relationship_metric_updates(
+                char_by_name[name],
+                metric_updates,
+                relationship_configs.get(name, []),
+                now,
+            )
 
     # 2. Inventory changes
     inv_by_name = {item.name: item for item in rpg.inventory}
@@ -114,6 +138,7 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
                         setattr(inv_by_name[item_name], k, v)
 
     # 3. Scene changes
+    scene_npcs_was_provided = "npcs" in delta.scene_changes
     if delta.scene_changes:
         scene = rpg.scene
         for k, v in delta.scene_changes.items():
@@ -152,13 +177,16 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
                 setattr(scene, k, v)
         # Track explored location
         if scene.location:
-            known = {loc.name for loc in rpg.explored_locations}
-            if scene.location not in known:
-                from datetime import datetime
-                rpg.explored_locations.append(MapLocation(
-                    name=scene.location,
-                    discovered_at=datetime.now().isoformat(),
-                ))
+            _mark_location_visited(rpg, scene.location, now)
+            if scene.location != previous_location and not scene_npcs_was_provided:
+                scene.npcs = []
+
+    _sync_character_presence(
+        rpg=rpg,
+        previous_location=previous_location,
+        scene_npcs_was_provided=scene_npcs_was_provided,
+        timestamp=now,
+    )
 
     # 4. Quest updates
     quest_by_name = {q.name: q for q in rpg.quests}
@@ -198,6 +226,201 @@ async def apply_rpg_delta(session_id: str, delta: RPGStateDelta) -> StateData:
     await update_state(session_id, state)
     log.info("rpg_state_updated", session_id=session_id, version=rpg.version, turn=rpg.turn_count)
     return state
+
+
+async def _load_relationship_metric_configs(session_id: str) -> dict[str, list[RelationshipMetricConfig]]:
+    data = await read_json(session_id, "session.json")
+    if not data:
+        return {}
+
+    configs: dict[str, list[RelationshipMetricConfig]] = {}
+    for char in data.get("characters", []):
+        name = char.get("name", "")
+        if not name:
+            continue
+        raw_metrics = char.get("relationship_metrics", [])
+        metrics = []
+        for raw in raw_metrics:
+            try:
+                metrics.append(RelationshipMetricConfig(**raw))
+            except Exception:
+                log.warning("relationship_metric_config_invalid", session_id=session_id, character=name)
+        if metrics:
+            configs[name] = metrics
+    return configs
+
+
+def _ensure_relationship_metric_states(
+    rpg: RPGStateData,
+    configs: dict[str, list[RelationshipMetricConfig]],
+    timestamp: str,
+) -> None:
+    char_by_name = {char.name: char for char in rpg.characters}
+    for char_name, metric_configs in configs.items():
+        char = char_by_name.get(char_name)
+        if char is None:
+            char = RPGCharacter(name=char_name)
+            rpg.characters.append(char)
+            char_by_name[char_name] = char
+        _ensure_character_metric_states(char, metric_configs, timestamp)
+
+
+def _ensure_character_metric_states(
+    char: RPGCharacter,
+    metric_configs: list[RelationshipMetricConfig],
+    timestamp: str,
+) -> None:
+    metric_by_name = {metric.name: metric for metric in char.relationship_metrics}
+    for config in metric_configs:
+        if not config.name:
+            continue
+        existing = metric_by_name.get(config.name)
+        if existing is None:
+            value = _clamp(config.initial_value, config.min_value, config.max_value)
+            stage, stage_description = _resolve_relationship_stage(config, value)
+            char.relationship_metrics.append(RelationshipMetricState(
+                name=config.name,
+                value=value,
+                stage=stage,
+                stage_description=stage_description,
+                last_changed=timestamp,
+            ))
+        else:
+            existing.value = _clamp(existing.value, config.min_value, config.max_value)
+            existing.stage, existing.stage_description = _resolve_relationship_stage(config, existing.value)
+
+
+def _apply_relationship_metric_updates(
+    char: RPGCharacter,
+    updates: list[dict] | object,
+    metric_configs: list[RelationshipMetricConfig],
+    timestamp: str,
+) -> None:
+    if not isinstance(updates, list):
+        return
+
+    config_by_name = {config.name: config for config in metric_configs}
+    metric_by_name = {metric.name: metric for metric in char.relationship_metrics}
+
+    for update in updates:
+        if not isinstance(update, dict):
+            continue
+        name = update.get("name", "")
+        if not name:
+            continue
+        config = config_by_name.get(name, RelationshipMetricConfig(name=name))
+        metric = metric_by_name.get(name)
+        if metric is None:
+            value = _clamp(config.initial_value, config.min_value, config.max_value)
+            stage, stage_description = _resolve_relationship_stage(config, value)
+            metric = RelationshipMetricState(
+                name=name,
+                value=value,
+                stage=stage,
+                stage_description=stage_description,
+            )
+            char.relationship_metrics.append(metric)
+            metric_by_name[name] = metric
+
+        if "value" in update:
+            try:
+                next_value = int(update["value"])
+            except (TypeError, ValueError):
+                next_value = metric.value
+        else:
+            raw_delta = update.get("value_delta", update.get("delta", update.get("change", 0)))
+            try:
+                next_value = metric.value + int(raw_delta)
+            except (TypeError, ValueError):
+                next_value = metric.value
+
+        metric.value = _clamp(next_value, config.min_value, config.max_value)
+        metric.stage, metric.stage_description = _resolve_relationship_stage(config, metric.value)
+        metric.note = update.get("note") or update.get("reason") or metric.note
+        metric.last_changed = timestamp
+
+
+def _resolve_relationship_stage(config: RelationshipMetricConfig, value: int) -> tuple[str, str]:
+    for stage in config.stages:
+        if stage.min <= value <= stage.max:
+            return stage.label, stage.description
+    return "", ""
+
+
+def _clamp(value: int, min_value: int, max_value: int) -> int:
+    return max(min_value, min(max_value, value))
+
+
+def _mark_location_visited(rpg: RPGStateData, location: str, timestamp: str) -> None:
+    loc = next((item for item in rpg.explored_locations if item.name == location), None)
+    if loc is None:
+        rpg.explored_locations.append(MapLocation(
+            name=location,
+            discovered_at=timestamp,
+            last_visited=timestamp,
+            visit_count=1,
+        ))
+        return
+
+    loc.last_visited = timestamp
+    loc.visit_count = max(1, loc.visit_count + 1)
+
+
+def _sync_character_presence(
+    rpg: RPGStateData,
+    previous_location: str,
+    scene_npcs_was_provided: bool,
+    timestamp: str,
+) -> None:
+    current_location = rpg.scene.location or ""
+    current_sub_location = rpg.scene.sub_location or ""
+    if not current_location:
+        return
+
+    present_names = {npc.name for npc in rpg.scene.npcs if npc.name}
+    char_by_name = {char.name: char for char in rpg.characters}
+
+    for npc in rpg.scene.npcs:
+        if not npc.name:
+            continue
+        npc.location = current_location
+        char = char_by_name.get(npc.name)
+        if char is None:
+            char = RPGCharacter(
+                name=npc.name,
+                location=current_location,
+                sub_location=current_sub_location,
+                presence="present",
+                last_seen=timestamp,
+            )
+            rpg.characters.append(char)
+            char_by_name[npc.name] = char
+            continue
+
+        char.location = current_location
+        char.sub_location = current_sub_location
+        char.presence = "present"
+        char.last_seen = timestamp
+
+    for char in rpg.characters:
+        if char.is_protagonist:
+            char.location = current_location
+            char.sub_location = current_sub_location
+            char.presence = "present"
+            char.last_seen = timestamp
+            continue
+
+        if char.name in present_names:
+            continue
+
+        if scene_npcs_was_provided:
+            if char.presence == "present" or (
+                previous_location and char.location in ("", previous_location, current_location)
+            ):
+                char.presence = "away"
+                if not char.location or char.location == current_location:
+                    char.location = previous_location or current_location
+                char.last_seen = char.last_seen or timestamp
 
 
 def build_rpg_summary(rpg: RPGStateData) -> RPGStateSummary:

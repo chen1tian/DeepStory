@@ -3,7 +3,8 @@ import { useSessionStore } from "../stores/sessionStore";
 import { useProtagonistStore } from "../stores/protagonistStore";
 import { useUIStore } from "../stores/uiStore";
 import ImagePicker from "./ImagePicker";
-import type { SessionCharacter } from "../types";
+import RelationshipMetricsEditor from "./RelationshipMetricsEditor";
+import type { SessionCharacter, RelationshipMetricConfig } from "../types";
 
 const EMOJI_OPTIONS = ["🧑", "👩", "👨", "🧙", "🦸", "🧝", "🧛", "🥷", "👸", "🤴", "🧚", "🦹", "👼", "🐉", "🐺", "🦊"];
 
@@ -163,7 +164,7 @@ interface CharacterItemProps {
   char: SessionCharacter;
   expanded: boolean;
   onToggleExpand: () => void;
-  onSave: (data: { name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null }) => Promise<unknown>;
+  onSave: (data: { name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null; relationship_metrics?: RelationshipMetricConfig[] }) => Promise<unknown>;
   onDelete: () => void;
   onCopy: () => void;
   onPushToPool: () => void;
@@ -180,12 +181,24 @@ function CharacterItem({
   onPushToPool,
   onPullFromPool,
 }: CharacterItemProps) {
-  const [form, setForm] = useState({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji, avatar_url: char.avatar_url as string | null });
+  const [form, setForm] = useState({
+    name: char.name,
+    setting: char.setting,
+    avatar_emoji: char.avatar_emoji,
+    avatar_url: char.avatar_url as string | null,
+    relationship_metrics: char.relationship_metrics || [],
+  });
   const [saving, setSaving] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   useEffect(() => {
-    setForm({ name: char.name, setting: char.setting, avatar_emoji: char.avatar_emoji, avatar_url: char.avatar_url as string | null });
+    setForm({
+      name: char.name,
+      setting: char.setting,
+      avatar_emoji: char.avatar_emoji,
+      avatar_url: char.avatar_url as string | null,
+      relationship_metrics: char.relationship_metrics || [],
+    });
   }, [char]);
 
   const update = <K extends keyof typeof form>(key: K, val: (typeof form)[K]) =>
@@ -310,6 +323,10 @@ function CharacterItem({
               rows={6}
             />
           </div>
+          <RelationshipMetricsEditor
+            metrics={form.relationship_metrics}
+            onChange={(metrics) => update("relationship_metrics", metrics)}
+          />
           <div className="flex justify-end">
             <button
               className="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-[13px] cursor-pointer border-none transition-colors disabled:opacity-50"
@@ -329,7 +346,7 @@ function CharacterItem({
 
 interface AddCharacterModalProps {
   sessionId: string;
-  onAdd: (sessionId: string, data: { pool_id?: string | null; name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null }) => Promise<SessionCharacter>;
+  onAdd: (sessionId: string, data: { pool_id?: string | null; name?: string; setting?: string; avatar_emoji?: string; avatar_url?: string | null; relationship_metrics?: RelationshipMetricConfig[] }) => Promise<SessionCharacter>;
   onClose: () => void;
 }
 

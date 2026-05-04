@@ -4,7 +4,8 @@ import { useSessionStore } from "../stores/sessionStore";
 import { useUIStore } from "../stores/uiStore";
 import AIAssistModal from "./AIAssistModal";
 import ImagePicker from "./ImagePicker";
-import type { Protagonist } from "../types";
+import RelationshipMetricsEditor from "./RelationshipMetricsEditor";
+import type { Protagonist, RelationshipMetricConfig } from "../types";
 
 const EMOJI_OPTIONS = ["🧑", "👩", "👨", "🧙", "🦸", "🧝", "🧛", "🥷", "👸", "🤴", "🧚", "🦹", "👼", "🐉", "🐺", "🦊"];
 
@@ -180,6 +181,7 @@ interface FormData {
   setting: string;
   avatar_emoji: string;
   avatar_url: string | null;
+  relationship_metrics: RelationshipMetricConfig[];
   is_default: boolean;
 }
 
@@ -195,6 +197,7 @@ function ProtagonistForm({
     setting: protagonist.setting,
     avatar_emoji: protagonist.avatar_emoji || "🧑",
     avatar_url: protagonist.avatar_url ?? null,
+    relationship_metrics: protagonist.relationship_metrics || [],
     is_default: protagonist.is_default,
   });
   const [saving, setSaving] = useState(false);
@@ -291,6 +294,11 @@ function ProtagonistForm({
           rows={10}
         />
       </div>
+
+      <RelationshipMetricsEditor
+        metrics={form.relationship_metrics}
+        onChange={(metrics) => update("relationship_metrics", metrics)}
+      />
 
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-secondary)] cursor-pointer">

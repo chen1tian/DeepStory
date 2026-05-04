@@ -98,6 +98,38 @@ function FloatingIconButton({
   );
 }
 
+function SettingsMenu({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
+      <div
+        className="w-[calc(100vw-1rem)] max-w-[720px] max-h-[calc(100dvh-1rem)] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 md:px-5 md:py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
+          <h2 className="text-base font-semibold">⚙️ 设定</h2>
+          <div className="flex-1" />
+          <button
+            className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4 md:p-5 overflow-y-auto minimal-scrollbar">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-5 text-[13px] text-[var(--text-secondary)]">
+            暂无设定项
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const restoreFromStorage = useAuthStore((s) => s.restoreFromStorage);
   useEffect(() => {
@@ -151,6 +183,7 @@ function MainApp() {
   const [showUserProtagonistManager, setShowUserProtagonistManager] = useState(false);
   const [showPresetManager, setShowPresetManager] = useState(false);
   const [showConnectionManager, setShowConnectionManager] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showHookManager, setShowHookManager] = useState(false);
@@ -242,6 +275,11 @@ function MainApp() {
       )}
       {showConnectionManager && (
         <ConnectionManager onClose={() => setShowConnectionManager(false)} />
+      )}
+      {showSettingsMenu && (
+        <SettingsMenu
+          onClose={() => setShowSettingsMenu(false)}
+        />
       )}
       {showDebugPanel && currentSessionId && (
         <DebugPanel
@@ -338,6 +376,7 @@ function MainApp() {
                       onManageUserProtagonists={() => { setShowUserProtagonistManager(true); setImmersivePanel(null); }}
                       onManagePresets={() => { setShowPresetManager(true); setImmersivePanel(null); }}
                       onManageConnections={() => { setShowConnectionManager(true); setImmersivePanel(null); }}
+                      onOpenSettings={() => { setShowSettingsMenu(true); setImmersivePanel(null); }}
                     />
                   </div>
                 )}
@@ -512,7 +551,10 @@ function MainApp() {
           onManageStories={() => { setShowStoryManager(true); setMobileMenuOpen(false); }}
           onManageProtagonists={() => { setShowProtagonistManager(true); setMobileMenuOpen(false); }}
           onManageUserProtagonists={() => { setShowUserProtagonistManager(true); setMobileMenuOpen(false); }}
-          onManagePresets={() => { setShowPresetManager(true); setMobileMenuOpen(false); }}            onManageConnections={() => { setShowConnectionManager(true); setMobileMenuOpen(false); }}        />
+          onManagePresets={() => { setShowPresetManager(true); setMobileMenuOpen(false); }}
+          onManageConnections={() => { setShowConnectionManager(true); setMobileMenuOpen(false); }}
+          onOpenSettings={() => { setShowSettingsMenu(true); setMobileMenuOpen(false); }}
+        />
       </nav>
 
       {/* Main */}

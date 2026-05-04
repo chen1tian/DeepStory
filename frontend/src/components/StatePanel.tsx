@@ -20,6 +20,8 @@ function HealthBar({ current, max, color = "#22c55e" }: { current: number; max: 
 
 function CharacterCard({ char, onSaveToPool }: { char: RPGCharacter; onSaveToPool?: (char: RPGCharacter) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const presenceLabel = char.presence === "present" ? "在场" : char.presence === "away" ? "离场" : "未知";
+  const presenceColor = char.presence === "present" ? "text-emerald-300 bg-emerald-500/15" : char.presence === "away" ? "text-slate-300 bg-slate-500/15" : "text-amber-300 bg-amber-500/15";
   return (
     <div className="bg-[var(--bg-surface)] rounded-lg px-3 py-2.5 mb-1.5 text-[13px]" style={{ cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -27,6 +29,7 @@ function CharacterCard({ char, onSaveToPool }: { char: RPGCharacter; onSaveToPoo
           {char.is_protagonist ? "⭐ " : ""}{char.name}
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className={`inline-block px-1.5 py-px rounded text-[11px] ${presenceColor}`}>{presenceLabel}</span>
           {onSaveToPool && (
             <button
               className="bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] px-2.5 py-1 rounded-md cursor-pointer text-xs hover:bg-[var(--bg-tertiary)] transition-colors"
@@ -41,6 +44,11 @@ function CharacterCard({ char, onSaveToPool }: { char: RPGCharacter; onSaveToPoo
         </span>
       </div>
       {char.description && <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{char.description}</div>}
+      {(char.location || char.sub_location) && (
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
+          位置: {char.location || "未知"}{char.sub_location ? ` · ${char.sub_location}` : ""}
+        </div>
+      )}
 
       <div style={{ marginTop: 6 }}>
         <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block">体力</div>
@@ -50,6 +58,26 @@ function CharacterCard({ char, onSaveToPool }: { char: RPGCharacter; onSaveToPoo
       </div>
 
       {char.mood && <div style={{ marginTop: 4, fontSize: 12 }}>情绪: {char.mood}</div>}
+
+      {char.relationship_metrics && char.relationship_metrics.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block">关系字段</div>
+          {char.relationship_metrics.map((metric, i) => (
+            <div key={i} className="bg-[var(--bg-primary)] rounded px-2 py-1 mb-1 text-[12px] border border-[var(--border)]">
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span>{metric.name}</span>
+                <span style={{ color: "var(--accent)", fontWeight: 600 }}>{metric.value}</span>
+              </div>
+              {(metric.stage || metric.stage_description) && (
+                <div style={{ color: "var(--text-secondary)", fontSize: 11 }}>
+                  {metric.stage}{metric.stage_description ? `: ${metric.stage_description}` : ""}
+                </div>
+              )}
+              {metric.note && <div style={{ color: "var(--text-secondary)", fontSize: 11 }}>备注: {metric.note}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {char.injuries.length > 0 && (
         <div style={{ marginTop: 4 }}>
@@ -248,6 +276,10 @@ export default function StatePanel() {
 
   const rpg = stateData.rpg;
   const hasRPG = rpg && (rpg.characters.length > 0 || rpg.scene.location || rpg.inventory.length > 0);
+  const protagonists = rpg?.characters.filter(c => c.is_protagonist) || [];
+  const presentCharacters = rpg?.characters.filter(c => !c.is_protagonist && c.presence === "present") || [];
+  const awayCharacters = rpg?.characters.filter(c => !c.is_protagonist && c.presence === "away") || [];
+  const unknownCharacters = rpg?.characters.filter(c => !c.is_protagonist && c.presence !== "present" && c.presence !== "away") || [];
 
   if (!hasRPG) {
     // Legacy display fallback
@@ -291,9 +323,13 @@ export default function StatePanel() {
       {activeTab === "chars" && (
         <div className="mb-5">
           {rpg.characters.length === 0 && <div className="bg-[var(--bg-surface)] rounded-lg px-3 py-2.5 mb-1.5 text-[13px]">暂无角色信息</div>}
-          {/* Protagonist first */}
-          {rpg.characters.filter(c => c.is_protagonist).map((c, i) => <CharacterCard key={`p${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
-          {rpg.characters.filter(c => !c.is_protagonist).map((c, i) => <CharacterCard key={`n${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
+          {protagonists.map((c, i) => <CharacterCard key={`p${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
+          {presentCharacters.length > 0 && <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block" style={{ marginTop: 8 }}>当前在场</div>}
+          {presentCharacters.map((c, i) => <CharacterCard key={`present${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
+          {awayCharacters.length > 0 && <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block" style={{ marginTop: 8 }}>不在当前场景</div>}
+          {awayCharacters.map((c, i) => <CharacterCard key={`away${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
+          {unknownCharacters.length > 0 && <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block" style={{ marginTop: 8 }}>位置未知</div>}
+          {unknownCharacters.map((c, i) => <CharacterCard key={`unknown${i}`} char={c} onSaveToPool={handleSaveToPool} />)}
         </div>
       )}
 
@@ -379,7 +415,9 @@ export default function StatePanel() {
               <div className="text-[11px] text-[var(--text-secondary)] mb-0.5 block">已探索地点 ({rpg.explored_locations.length})</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {rpg.explored_locations.map((loc, i) => (
-                  <span key={i} className="inline-block px-1.5 py-px rounded text-[11px] bg-indigo-500/15 text-indigo-300 m-0.5">{loc.name}</span>
+                  <span key={i} className={`inline-block px-1.5 py-px rounded text-[11px] m-0.5 ${loc.name === rpg.scene.location ? "bg-emerald-500/15 text-emerald-300" : "bg-indigo-500/15 text-indigo-300"}`}>
+                    {loc.name === rpg.scene.location ? "📍 " : ""}{loc.name}{loc.visit_count > 1 ? ` ×${loc.visit_count}` : ""}
+                  </span>
                 ))}
               </div>
             </div>

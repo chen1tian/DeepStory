@@ -65,6 +65,7 @@ async def add_session_character(session_id: str, req: CreateSessionCharacterRequ
             setting=pool_data.get("setting", req.setting),
             avatar_emoji=pool_data.get("avatar_emoji", req.avatar_emoji),
             avatar_url=pool_data.get("avatar_url", req.avatar_url),
+            relationship_metrics=pool_data.get("relationship_metrics", req.relationship_metrics),
             created_at=now,
             updated_at=now,
         )
@@ -76,6 +77,7 @@ async def add_session_character(session_id: str, req: CreateSessionCharacterRequ
             setting=req.setting,
             avatar_emoji=req.avatar_emoji,
             avatar_url=req.avatar_url,
+            relationship_metrics=req.relationship_metrics,
             created_at=now,
             updated_at=now,
         )
@@ -137,6 +139,7 @@ async def copy_session_character(session_id: str, char_id: str, body: dict):
         setting=src.get("setting", ""),
         avatar_emoji=src.get("avatar_emoji", "🧑"),
         avatar_url=src.get("avatar_url"),
+        relationship_metrics=src.get("relationship_metrics", []),
         created_at=now,
         updated_at=now,
     )
@@ -178,6 +181,7 @@ async def push_character_to_pool(session_id: str, char_id: str):
             pool_data["setting"] = char.get("setting", "")
             pool_data["avatar_emoji"] = char.get("avatar_emoji", "🧑")
             pool_data["avatar_url"] = char.get("avatar_url")
+            pool_data["relationship_metrics"] = char.get("relationship_metrics", [])
             pool_data["updated_at"] = now
             await save_protagonist(pool_id, pool_data)
             protagonist = Protagonist(**pool_data)
@@ -191,6 +195,7 @@ async def push_character_to_pool(session_id: str, char_id: str):
         setting=char.get("setting", ""),
         avatar_emoji=char.get("avatar_emoji", "🧑"),
         avatar_url=char.get("avatar_url"),
+        relationship_metrics=char.get("relationship_metrics", []),
         is_default=False,
         created_at=now,
         updated_at=now,
@@ -231,6 +236,7 @@ async def pull_character_from_pool(session_id: str, char_id: str):
     characters[idx]["setting"] = pool_data.get("setting", "")
     characters[idx]["avatar_emoji"] = pool_data.get("avatar_emoji", "🧑")
     characters[idx]["avatar_url"] = pool_data.get("avatar_url")
+    characters[idx]["relationship_metrics"] = pool_data.get("relationship_metrics", [])
     characters[idx]["updated_at"] = now
     await _save_characters(session_id, data, characters)
     return SessionCharacter(**characters[idx])

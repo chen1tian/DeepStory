@@ -105,14 +105,35 @@ async def extract_state(session_id: str, branch_messages: list[Message], connect
 
     # Build current state summary for context
     rpg = current_state.rpg
+    session_data = await read_json(session_id, "session.json") or {}
+    relationship_configs = [
+        {
+            "character": c.get("name", ""),
+            "metrics": c.get("relationship_metrics", []),
+        }
+        for c in session_data.get("characters", [])
+        if c.get("relationship_metrics")
+    ]
     state_context = json.dumps({
         "characters": [{"name": c.name, "health": c.health, "injuries": c.injuries,
                         "status_effects": [e.name for e in c.status_effects],
-                        "is_protagonist": c.is_protagonist}
+                        "is_protagonist": c.is_protagonist,
+                        "location": c.location,
+                        "sub_location": c.sub_location,
+                        "presence": c.presence,
+                        "last_seen": c.last_seen,
+                        "relationship_metrics": [m.model_dump() for m in c.relationship_metrics]}
                        for c in rpg.characters],
         "inventory": [{"name": i.name, "category": i.category, "quantity": i.quantity}
                       for i in rpg.inventory],
-        "scene": {"location": rpg.scene.location, "time": rpg.scene.time},
+        "scene": {
+            "location": rpg.scene.location,
+            "sub_location": rpg.scene.sub_location,
+            "time": rpg.scene.time,
+            "npcs": [npc.model_dump() for npc in rpg.scene.npcs],
+        },
+        "explored_locations": [loc.model_dump() for loc in rpg.explored_locations],
+        "relationship_metric_configs": relationship_configs,
         "active_quests": [{"name": q.name, "status": q.status} for q in rpg.quests if q.status == "active"],
     }, ensure_ascii=False, indent=2)
 

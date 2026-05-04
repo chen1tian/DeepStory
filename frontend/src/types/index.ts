@@ -41,6 +41,7 @@ export interface SessionCharacter {
   setting: string;
   avatar_emoji: string;
   avatar_url: string | null;
+  relationship_metrics: RelationshipMetricConfig[];
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +52,7 @@ export interface CreateSessionCharacterRequest {
   setting?: string;
   avatar_emoji?: string;
   avatar_url?: string | null;
+  relationship_metrics?: RelationshipMetricConfig[];
 }
 
 export interface UpdateSessionCharacterRequest {
@@ -58,6 +60,7 @@ export interface UpdateSessionCharacterRequest {
   setting?: string;
   avatar_emoji?: string;
   avatar_url?: string | null;
+  relationship_metrics?: RelationshipMetricConfig[];
 }
 
 export interface Session {
@@ -124,10 +127,39 @@ export interface Relationship {
   note: string;
 }
 
+export interface RelationshipStage {
+  min: number;
+  max: number;
+  label: string;
+  description: string;
+}
+
+export interface RelationshipMetricConfig {
+  name: string;
+  description: string;
+  min_value: number;
+  max_value: number;
+  initial_value: number;
+  stages: RelationshipStage[];
+}
+
+export interface RelationshipMetricState {
+  name: string;
+  value: number;
+  stage: string;
+  stage_description: string;
+  note: string;
+  last_changed: string;
+}
+
 export interface RPGCharacter {
   name: string;
   description: string;
   is_protagonist: boolean;
+  location: string;
+  sub_location: string;
+  presence: "present" | "away" | "unknown" | string;
+  last_seen: string;
   health: number;
   max_health: number;
   energy: number;
@@ -138,6 +170,7 @@ export interface RPGCharacter {
   equipment: EquipmentItem[];
   skills: Skill[];
   relationships: Relationship[];
+  relationship_metrics: RelationshipMetricState[];
   tags: string[];
 }
 
@@ -167,11 +200,14 @@ export interface SceneNPC {
   name: string;
   attitude: string;
   status: string;
+  location: string;
 }
 
 export interface MapLocation {
   name: string;
   discovered_at: string;
+  last_visited: string;
+  visit_count: number;
   notes: string;
 }
 
@@ -476,6 +512,7 @@ export interface Protagonist {
   setting: string;
   avatar_emoji: string;
   avatar_url: string | null;
+  relationship_metrics: RelationshipMetricConfig[];
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -486,6 +523,7 @@ export interface CreateProtagonistRequest {
   setting?: string;
   avatar_emoji?: string;
   avatar_url?: string | null;
+  relationship_metrics?: RelationshipMetricConfig[];
   is_default?: boolean;
 }
 
@@ -494,6 +532,7 @@ export interface UpdateProtagonistRequest {
   setting?: string;
   avatar_emoji?: string;
   avatar_url?: string | null;
+  relationship_metrics?: RelationshipMetricConfig[];
   is_default?: boolean;
 }
 

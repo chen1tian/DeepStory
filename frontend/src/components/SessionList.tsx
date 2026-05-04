@@ -8,10 +8,20 @@ interface Props {
   onManageUserProtagonists: () => void;
   onManagePresets: () => void;
   onManageConnections: () => void;
+  onOpenSettings: () => void;
   onShowHistory: () => void;
 }
 
-export default function SessionList({ onNewSession, onManageStories, onManageProtagonists, onManageUserProtagonists, onManagePresets, onManageConnections, onShowHistory }: Props) {
+export default function SessionList({
+  onNewSession,
+  onManageStories,
+  onManageProtagonists,
+  onManageUserProtagonists,
+  onManagePresets,
+  onManageConnections,
+  onOpenSettings,
+  onShowHistory,
+}: Props) {
   const sessions = useSessionStore((s) => s.sessions);
   const openSessionIds = useSessionStore((s) => s.openSessionIds);
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
@@ -81,6 +91,9 @@ export default function SessionList({ onNewSession, onManageStories, onManagePro
         </button>
         <button className="px-2.5 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] hover:text-white rounded-lg hover:bg-white/5 transition-colors" onClick={onManageConnections}>
           🔗 连接
+        </button>
+        <button className="px-2.5 py-1.5 text-[13px] font-medium text-[var(--text-secondary)] hover:text-white rounded-lg hover:bg-white/5 transition-colors" onClick={onOpenSettings}>
+          ⚙️ 设定
         </button>
       </div>
     </>

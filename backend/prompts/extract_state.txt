@@ -1,4 +1,4 @@
-你是一个RPG游戏状态追踪器。分析聊天记录中的变化，只提取**发生了改变的部分**（增量/delta）。
+你是一个 RPG 游戏状态追踪器。分析聊天记录中的变化，只提取发生改变的部分（增量 delta）。
 
 ## 当前游戏状态
 {previous_state}
@@ -6,19 +6,28 @@
 ## 新的聊天记录
 {new_messages}
 
-请返回以下 JSON 格式（只包含有变化的字段，没变化的不要写）：
+请返回以下 JSON 格式，只包含有变化的字段。没有变化的类别传空数组 [] 或空对象 {{}}。
+
 {{
   "character_updates": [
     {{
       "name": "角色名",
       "is_protagonist": true,
+      "location": "角色当前所在地点",
+      "sub_location": "角色所在具体区域",
+      "presence": "present",
+      "last_seen": "这段剧情中最后确认的位置/时间",
       "health": 80,
       "injuries": ["右臂剑伤"],
       "status_effects": [{{"name": "中毒", "source": "毒蛇", "impact": "每回合体力-5", "remaining_turns": 3}}],
       "mood": "紧张",
       "description": "角色简短描述",
       "tags": ["新获得的经历标签"],
-      "relationships": [{{"npc": "某NPC", "attitude": "友好", "note": "曾搭救过"}}]
+      "relationships": [{{"npc": "某NPC", "attitude": "友好", "note": "曾搭救过"}}],
+      "relationship_metrics": [
+        {{"name": "好感度", "value_delta": 5, "reason": "玩家安慰了该角色并帮助其脱困"}},
+        {{"name": "信任度", "value": 42, "reason": "如果剧情明确给出最终数值，可直接写 value"}}
+      ]
     }}
   ],
   "inventory_changes": [
@@ -35,22 +44,34 @@
     "danger_level": "低/中/高/极高",
     "objects": [{{"name": "可交互物", "interactable": true, "description": "描述"}}],
     "exits": [{{"direction": "东", "destination": "集市", "accessible": true}}],
-    "npcs": [{{"name": "NPC名", "attitude": "友好", "status": "正在打坐"}}]
+    "npcs": [{{"name": "NPC名", "attitude": "友好", "status": "正在打坐", "location": "新地点"}}]
   }},
   "quest_updates": [
     {{"name": "任务名", "type": "main", "source_npc": "来源NPC", "objective": "目标", "progress": "进度描述", "status": "active"}}
   ],
   "new_events": [
-    {{"description": "发生了什么事", "changes": ["主角体力-20", "获得灵石×5"], "timestamp": "叙事时间"}}
+    {{"description": "发生了什么事", "changes": ["主角体力-20", "获得灵石x5"], "timestamp": "叙事时间"}}
   ]
 }}
 
 重要规则：
-- 只返回JSON，不要有其他文字
-- character_updates: 只列出状态有变化的角色。新出现的角色也要列出
-- 主角必须标记 "is_protagonist": true
-- inventory_changes: action 只能是 add/remove/use。category 只能是 equipment/consumable/key_item/material
-- scene_changes: 只在场景有变化时才填写（角色移动、时间推进、环境变化等）
-- quest_updates: 新任务或任务进度变化时才填写
-- new_events: 记录这段对话中发生的重要事件和造成的状态变更
-- 如果某个类别没有变化，传空数组 [] 或空对象 {{}}
+- 只返回 JSON，不要有其他文字、解释或 markdown。
+- character_updates 只列出状态有变化的角色；新出现的角色也要列出。
+- 主角必须标记 "is_protagonist": true，且主角通常跟随玩家当前位置，presence 为 "present"。
+- presence 只能是 "present"、"away" 或 "unknown"：
+  - present：角色当前就在 scene_changes.location / 当前场景。
+  - away：角色仍存在于故事中，但不在当前场景，留在其他地点或已离开。
+  - unknown：剧情没有说明角色在哪里。
+- 当玩家切换地点、进入新房间、离开某处、传送、上车/下车、进入/离开建筑时，必须填写 scene_changes.location，并重新给出当前场景真实在场的 scene_changes.npcs。
+- scene_changes.npcs 是“当前地点在场 NPC”的完整列表，不要把留在旧地点、没有跟随玩家、只是曾经出现过的人放进去。
+- 如果某角色明确留在旧地点或离开当前场景，请在 character_updates 中写出该角色的 location 和 presence: "away"。
+- 如果某角色跟随玩家来到新地点，请同时出现在 scene_changes.npcs 中，并可在 character_updates 中标记 location 和 presence: "present"。
+- location 表示主要地点，sub_location 表示房间、街角、楼层、洞穴深处等更细的位置。
+- relationship_metrics 只更新“当前游戏状态 relationship_metric_configs 中已经为该角色配置过的字段”，例如好感度、信任度、恐惧值。
+- 关系数值变化必须来自新聊天记录中的明确互动、态度变化、帮助、伤害、承诺、背叛、亲密行为、冲突或重要共同经历；不要因为普通同场或寒暄自动大幅变化。
+- 优先使用 value_delta 表示本轮增减，轻微变化通常为 -3 到 +3，明显帮助/冒犯为 -10 到 +10，重大救命/背叛才使用更大幅度。
+- 如果剧情明确给出某关系字段的最终数值，可以使用 value；否则不要猜最终值。
+- inventory_changes.action 只能是 add/remove/use/update；category 只能是 equipment/consumable/key_item/material。
+- scene_changes 只在场景有变化时填写，包括角色移动、地点切换、时间推进、环境变化、在场 NPC 变化等。
+- quest_updates 只在新任务或任务进度变化时填写。
+- new_events 记录这段对话中的重要事件和造成的状态变更。
