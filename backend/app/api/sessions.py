@@ -120,6 +120,7 @@ async def create_session(req: CreateSessionRequest):
         preset_id=active_preset_id,
         characters=initial_characters,
         user_protagonist_id=user_protagonist_id,
+        active_setting_ids=req.active_setting_ids,
     )
     await write_json(session_id, "session.json", session.model_dump())
 
@@ -148,6 +149,7 @@ async def create_session(req: CreateSessionRequest):
         preset_id=session.preset_id,
         characters=session.characters,
         user_protagonist_id=session.user_protagonist_id,
+        active_setting_ids=session.active_setting_ids,
     )
 
 
@@ -163,6 +165,7 @@ async def get_sessions():
             preset_id=s.get("preset_id"),
             characters=s.get("characters", []),
             user_protagonist_id=s.get("user_protagonist_id"),
+            active_setting_ids=s.get("active_setting_ids", []),
         )
         for s in sessions
     ]
@@ -181,6 +184,7 @@ async def get_session(session_id: str):
         preset_id=data.get("preset_id"),
         characters=data.get("characters", []),
         user_protagonist_id=data.get("user_protagonist_id"),
+        active_setting_ids=data.get("active_setting_ids", []),
     )
 
 

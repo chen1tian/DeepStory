@@ -23,6 +23,7 @@ import PresetManager from "./components/PresetManager";
 import PresetSwitcher from "./components/PresetSwitcher";
 import ConnectionManager from "./components/ConnectionManager";
 import ConnectionSwitcher from "./components/ConnectionSwitcher";
+import GameSettingManager from "./components/GameSettingManager";
 import DebugPanel from "./components/DebugPanel";
 import HistoryPanel from "./components/HistoryPanel";
 import HookManager from "./components/HookManager";
@@ -95,38 +96,6 @@ function FloatingIconButton({
     >
       {icon}
     </button>
-  );
-}
-
-function SettingsMenu({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center animate-[fadeIn_0.15s_ease-out]" onClick={onClose}>
-      <div
-        className="w-[calc(100vw-1rem)] max-w-[720px] max-h-[calc(100dvh-1rem)] bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 md:px-5 md:py-4 border-b border-[var(--border)] flex items-center gap-3 bg-[var(--bg-secondary)]">
-          <h2 className="text-base font-semibold">⚙️ 设定</h2>
-          <div className="flex-1" />
-          <button
-            className="bg-transparent border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] px-3 py-1.5 rounded-lg text-[13px] cursor-pointer transition-colors"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="p-4 md:p-5 overflow-y-auto minimal-scrollbar">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-5 text-[13px] text-[var(--text-secondary)]">
-            暂无设定项
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -277,9 +246,7 @@ function MainApp() {
         <ConnectionManager onClose={() => setShowConnectionManager(false)} />
       )}
       {showSettingsMenu && (
-        <SettingsMenu
-          onClose={() => setShowSettingsMenu(false)}
-        />
+        <GameSettingManager onClose={() => setShowSettingsMenu(false)} />
       )}
       {showDebugPanel && currentSessionId && (
         <DebugPanel

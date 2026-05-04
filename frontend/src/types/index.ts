@@ -71,6 +71,7 @@ export interface Session {
   preset_id?: string | null;
   characters: SessionCharacter[];
   user_protagonist_id?: string | null;
+  active_setting_ids: string[];
 }
 
 export interface SummaryData {
@@ -352,6 +353,30 @@ export interface CreateSessionRequest {
   user_protagonist_id?: string;
   connection_id?: string;
   preset_id?: string;
+  active_setting_ids?: string[];
+}
+
+// --- Game Settings / World Book ---
+
+export interface GameSetting {
+  id: string;
+  name: string;
+  description: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateGameSettingRequest {
+  name?: string;
+  description?: string;
+  content?: string;
+}
+
+export interface UpdateGameSettingRequest {
+  name?: string;
+  description?: string;
+  content?: string;
 }
 
 // --- Connections ---

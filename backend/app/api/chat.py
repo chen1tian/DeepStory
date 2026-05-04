@@ -17,6 +17,7 @@ from app.services.chat_manager import (
 )
 from app.services.event_bus import event_bus
 from app.storage.user_protagonist_storage import load_user_protagonist
+from app.storage.game_setting_storage import load_game_setting
 from app.services.auth_service import decode_access_token
 from app.storage.base import set_user_id
 from app.storage.user_storage import get_user_by_id
@@ -267,6 +268,12 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
 
         # Phase 1, Step 3: Build prompt with token budgeting
         characters = session_data.get("characters", []) if session_data else []
+        active_settings = []
+        active_setting_ids = session_data.get("active_setting_ids", []) if session_data else []
+        for setting_id in active_setting_ids:
+            setting_data = await load_game_setting(setting_id)
+            if setting_data:
+                active_settings.append(setting_data)
         recent_msgs = ctx["branch_messages"][:-1] if len(ctx["branch_messages"]) > 0 else []
         prompt_result = await build_prompt(
             system_prompt=session_data.get("system_prompt", "") if session_data else "",
@@ -275,6 +282,7 @@ async def _handle_chat(ws: WebSocket, session_id: str, msg_in: WSMessageIn, broa
             recent_messages=recent_msgs,
             user_input=msg_in.content,
             characters=characters,
+            active_settings=active_settings,
             user_protagonist=user_protagonist.model_dump() if user_protagonist and hasattr(user_protagonist, 'model_dump') else user_protagonist,
             narrator_directives=narrator_directives,
             room_players=room_players,

@@ -5,6 +5,8 @@ import { getSessions, createSession, deleteSession,
   deleteSessionCharacter, copySessionCharacter,
   pushCharacterToPool, pullCharacterFromPool,
   setSessionProtagonist,
+  addSettingToSession as addSettingToSessionApi,
+  removeSettingFromSession as removeSettingFromSessionApi,
 } from "../services/api";
 
 interface SessionState {
@@ -32,6 +34,10 @@ interface SessionState {
 
   // User protagonist management
   setSessionProtagonist: (sessionId: string, userProtagonistId: string | null) => Promise<void>;
+
+  // Game setting management
+  addSettingToSession: (sessionId: string, settingId: string) => Promise<void>;
+  removeSettingFromSession: (sessionId: string, settingId: string) => Promise<void>;
 }
 
 const LAST_SESSION_KEY = "lastSessionId";
@@ -228,6 +234,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((s) => ({
       sessions: s.sessions.map((sess) =>
         sess.id === sessionId ? { ...sess, user_protagonist_id: userProtagonistId } : sess
+      ),
+    }));
+  },
+
+  addSettingToSession: async (sessionId: string, settingId: string) => {
+    const result = await addSettingToSessionApi(sessionId, settingId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, active_setting_ids: result.active_setting_ids } : sess
+      ),
+    }));
+  },
+
+  removeSettingFromSession: async (sessionId: string, settingId: string) => {
+    const result = await removeSettingFromSessionApi(sessionId, settingId);
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId ? { ...sess, active_setting_ids: result.active_setting_ids } : sess
       ),
     }));
   },

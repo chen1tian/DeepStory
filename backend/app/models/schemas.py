@@ -27,6 +27,7 @@ class SessionMeta(BaseModel):
     preset_id: str | None = None
     characters: list[SessionCharacter] = Field(default_factory=list)
     user_protagonist_id: str | None = None  # bound user protagonist
+    active_setting_ids: list[str] = Field(default_factory=list)
 
 
 class SummaryData(BaseModel):
@@ -416,6 +417,30 @@ class UpdateProtagonistRequest(BaseModel):
     is_default: bool | None = None
 
 
+# --- Game setting / world book schemas ---
+
+
+class GameSetting(BaseModel):
+    id: str
+    name: str = "未命名设定"
+    description: str = ""
+    content: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class CreateGameSettingRequest(BaseModel):
+    name: str = "新设定"
+    description: str = ""
+    content: str = ""
+
+
+class UpdateGameSettingRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    content: str | None = None
+
+
 # --- Connection schemas ---
 
 from enum import Enum
@@ -700,6 +725,7 @@ class CreateSessionRequest(BaseModel):
     protagonist_id: str | None = None
     user_protagonist_id: str | None = None  # user protagonist (avatar)
     preset_id: str | None = None  # explicit preset to apply
+    active_setting_ids: list[str] = Field(default_factory=list)
 
 
 class SessionResponse(BaseModel):
@@ -710,6 +736,7 @@ class SessionResponse(BaseModel):
     preset_id: str | None = None
     characters: list[SessionCharacter] = Field(default_factory=list)
     user_protagonist_id: str | None = None
+    active_setting_ids: list[str] = Field(default_factory=list)
 
 
 class MessagesResponse(BaseModel):

@@ -80,6 +80,7 @@ async def build_chat_messages(
     recent_messages: list[Message],
     user_input: str,
     characters: list | None = None,
+    active_settings: list[dict] | None = None,
     user_protagonist: dict | None = None,
     narrator_directives: list[NarrativeDirective] | None = None,
     room_players: list | None = None,  # list of PlayerInfo dicts for multiplayer
@@ -149,6 +150,27 @@ async def build_chat_messages(
         if psetting:
             protagonist_block += f"\n\n「{pname}」的角色背景与设定：\n{psetting}"
         system_prompt = system_prompt + "\n\n" + protagonist_block
+
+    if active_settings:
+        setting_parts = []
+        for item in active_settings:
+            name = item.get("name", "") if isinstance(item, dict) else getattr(item, "name", "")
+            description = item.get("description", "") if isinstance(item, dict) else getattr(item, "description", "")
+            content = item.get("content", "") if isinstance(item, dict) else getattr(item, "content", "")
+            if not name and not content:
+                continue
+            block = f"【{name or '未命名设定'}】"
+            if description:
+                block += f"\n说明：{description}"
+            if content:
+                block += f"\n{content}"
+            setting_parts.append(block)
+        if setting_parts:
+            system_prompt = (
+                system_prompt
+                + "\n\n【世界设定】以下设定已加入当前会话。请把它们视为稳定背景事实，除非后续对话明确改写或废弃：\n"
+                + "\n\n".join(setting_parts)
+            )
 
     # Append session characters / NPC cast to system prompt
     if characters:

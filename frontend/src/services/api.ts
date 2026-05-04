@@ -16,6 +16,9 @@ import type {
   Preset,
   CreatePresetRequest,
   UpdatePresetRequest,
+  GameSetting,
+  CreateGameSettingRequest,
+  UpdateGameSettingRequest,
   SessionCharacter,
   CreateSessionCharacterRequest,
   UpdateSessionCharacterRequest,
@@ -281,6 +284,34 @@ export const updatePreset = (id: string, data: UpdatePresetRequest) =>
 
 export const deletePreset = (id: string) =>
   request<{ status: string }>(`/presets/${id}`, { method: "DELETE" });
+
+// Game Settings / World Book
+export const getGameSettings = () => request<GameSetting[]>("/settings");
+
+export const createGameSetting = (data: CreateGameSettingRequest = {}) =>
+  request<GameSetting>("/settings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateGameSetting = (id: string, data: UpdateGameSettingRequest) =>
+  request<GameSetting>(`/settings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const deleteGameSetting = (id: string) =>
+  request<{ status: string }>(`/settings/${id}`, { method: "DELETE" });
+
+export const addSettingToSession = (sessionId: string, settingId: string) =>
+  request<{ active_setting_ids: string[] }>(`/sessions/${sessionId}/settings/${settingId}`, {
+    method: "POST",
+  });
+
+export const removeSettingFromSession = (sessionId: string, settingId: string) =>
+  request<{ active_setting_ids: string[] }>(`/sessions/${sessionId}/settings/${settingId}`, {
+    method: "DELETE",
+  });
 
 // Connections
 export const getConnections = () => request<Connection[]>("/connections");
