@@ -44,6 +44,7 @@ import type {
   NarrativeDirective,
   CreateDirectiveRequest,
   GenerateNodesRequest,
+  GenerateNodesStreamEvent,
   RoomState,
   JoinRoomResponse,
 } from "../types";
@@ -449,6 +450,79 @@ export const generateNodes = (sessionId: string, data: GenerateNodesRequest) =>
     method: "POST",
     body: JSON.stringify({ ...data, connection_id: data.connection_id ?? localStorage.getItem("activeConnectionId") }),
   });
+
+export async function generateNodesStream(
+  sessionId: string,
+  data: GenerateNodesRequest,
+  onEvent: (event: GenerateNodesStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<StoryNode[]> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}/narrator/${sessionId}/generate-nodes/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ ...data, connection_id: data.connection_id ?? localStorage.getItem("activeConnectionId") }),
+    signal,
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("auth_token");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+  if (!res.body) {
+    throw new Error("流式响应不可用");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const nodes: StoryNode[] = [];
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const event = JSON.parse(trimmed) as GenerateNodesStreamEvent;
+      onEvent(event);
+      if (event.type === "result") {
+        nodes.splice(0, nodes.length, ...event.nodes);
+      }
+      if (event.type === "error") {
+        throw new Error(event.message);
+      }
+    }
+
+    if (done) {
+      if (buffer.trim()) {
+        const event = JSON.parse(buffer.trim()) as GenerateNodesStreamEvent;
+        onEvent(event);
+        if (event.type === "result") {
+          nodes.splice(0, nodes.length, ...event.nodes);
+        }
+        if (event.type === "error") {
+          throw new Error(event.message);
+        }
+      }
+      break;
+    }
+  }
+
+  return nodes;
+}
 
 export const addDirective = (sessionId: string, data: CreateDirectiveRequest) =>
   request<NarrativeDirective>(`/narrator/${sessionId}/directives`, {

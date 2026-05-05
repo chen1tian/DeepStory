@@ -12,6 +12,7 @@ import type {
   UpdateNodeRequest,
   CreateDirectiveRequest,
   GenerateNodesRequest,
+  GenerateNodesStreamEvent,
 } from "../types";
 import * as api from "../services/api";
 
@@ -33,6 +34,12 @@ interface NarratorState {
   updateNode: (sessionId: string, nodeId: string, data: UpdateNodeRequest) => Promise<void>;
   removeNode: (sessionId: string, nodeId: string) => Promise<void>;
   generateNodes: (sessionId: string, request: GenerateNodesRequest) => Promise<StoryNode[]>;
+  generateNodesStream: (
+    sessionId: string,
+    request: GenerateNodesRequest,
+    onEvent: (event: GenerateNodesStreamEvent) => void,
+    signal?: AbortSignal,
+  ) => Promise<StoryNode[]>;
 
   addDirective: (sessionId: string, data: CreateDirectiveRequest) => Promise<void>;
   removeDirective: (sessionId: string, directiveId: string) => Promise<void>;
@@ -130,6 +137,15 @@ export const useNarratorStore = create<NarratorState>((set, get) => ({
     try {
       const { nodes } = await api.generateNodes(sessionId, request);
       return nodes;
+    } finally {
+      set({ isGenerating: false });
+    }
+  },
+
+  generateNodesStream: async (sessionId, request, onEvent, signal) => {
+    set({ isGenerating: true });
+    try {
+      return await api.generateNodesStream(sessionId, request, onEvent, signal);
     } finally {
       set({ isGenerating: false });
     }

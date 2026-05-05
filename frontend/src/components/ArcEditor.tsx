@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNarratorStore } from "../stores/narratorStore";
 import { useConnectionStore } from "../stores/connectionStore";
-import type { StoryNode, CreateArcRequest, UpdateArcRequest, StoryNodeStatus } from "../types";
+import type { StoryNode, CreateArcRequest, UpdateArcRequest, StoryNodeStatus, GenerateNodesStreamEvent } from "../types";
 import { randomId } from "../utils/randomId";
 
 interface Props {
@@ -104,7 +104,7 @@ export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) 
   const createArc = useNarratorStore((s) => s.createArc);
   const updateArc = useNarratorStore((s) => s.updateArc);
   const deleteArc = useNarratorStore((s) => s.deleteArc);
-  const generateNodes = useNarratorStore((s) => s.generateNodes);
+  const generateNodesStream = useNarratorStore((s) => s.generateNodesStream);
   const isGenerating = useNarratorStore((s) => s.isGenerating);
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
   const editingArc = mode === "edit" ? arc : null;
@@ -124,6 +124,12 @@ export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) 
   const [generateGoal, setGenerateGoal] = useState(goal);
   const [generateCount, setGenerateCount] = useState(5);
   const [generateContext, setGenerateContext] = useState("");
+  const [showStreamLog, setShowStreamLog] = useState(false);
+  const [statusLogs, setStatusLogs] = useState<string[]>([]);
+  const [streamThinking, setStreamThinking] = useState("");
+  const [streamContent, setStreamContent] = useState("");
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (editingArc) {
@@ -142,7 +148,18 @@ export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) 
     setTone("");
     setPacingNotes("");
     setLocalNodes([]);
+    setStatusLogs([]);
+    setStreamThinking("");
+    setStreamContent("");
+    setStreamError(null);
   }, [editingArc, mode]);
+
+  useEffect(() => {
+    return () => {
+      generateAbortRef.current?.abort();
+      generateAbortRef.current = null;
+    };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -209,21 +226,77 @@ export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) 
 
   const handleGenerateNodes = async () => {
     if (!generateGoal.trim()) return;
-    const generated = await generateNodes(sessionId, {
-      goal: generateGoal,
-      count: generateCount,
-      context: generateContext,
-      connection_id: activeConnectionId,
-    });
-    // Add generated nodes to local state (don't save to backend yet)
-    setLocalNodes((prev) => {
-      const maxOrder = prev.length > 0 ? Math.max(...prev.map((n) => n.order)) : 0;
-      return [
-        ...prev,
-        ...generated.map((n, i) => ({ ...n, order: maxOrder + n.order + i })),
-      ];
-    });
-    setShowGenerate(false);
+    generateAbortRef.current?.abort();
+    const abortController = new AbortController();
+    generateAbortRef.current = abortController;
+    setShowStreamLog(true);
+    setStatusLogs(["已提交生成请求，正在建立流式连接..."]);
+    setStreamThinking("");
+    setStreamContent("");
+    setStreamError(null);
+
+    const handleStreamEvent = (event: GenerateNodesStreamEvent) => {
+      if (event.type === "status") {
+        setStatusLogs((prev) => [...prev, event.message]);
+        return;
+      }
+      if (event.type === "thinking") {
+        setStreamThinking((prev) => prev + event.content);
+        return;
+      }
+      if (event.type === "content") {
+        setStreamContent((prev) => prev + event.content);
+        return;
+      }
+      if (event.type === "result") {
+        setStatusLogs((prev) => [...prev, `生成完成，得到 ${event.nodes.length} 个候选节点。`]);
+        return;
+      }
+      if (event.type === "error") {
+        setStreamError(event.message);
+        setStatusLogs((prev) => [...prev, `生成失败：${event.message}`]);
+      }
+    };
+
+    try {
+      const generated = await generateNodesStream(sessionId, {
+        goal: generateGoal,
+        count: generateCount,
+        context: generateContext,
+        connection_id: activeConnectionId,
+      }, handleStreamEvent, abortController.signal);
+
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      setLocalNodes((prev) => {
+        const maxOrder = prev.length > 0 ? Math.max(...prev.map((n) => n.order)) : 0;
+        return [
+          ...prev,
+          ...generated.map((n, i) => ({ ...n, order: maxOrder + n.order + i })),
+        ];
+      });
+      setShowGenerate(false);
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        setStatusLogs((prev) => [...prev, "用户已中止本次生成。"]);
+        setStreamError(null);
+        return;
+      }
+      const message = error instanceof Error ? error.message : "AI 生成失败";
+      setStreamError(message);
+      setStatusLogs((prev) => [...prev, `生成失败：${message}`]);
+    } finally {
+      if (generateAbortRef.current === abortController) {
+        generateAbortRef.current = null;
+      }
+    }
+  };
+
+  const handleAbortGeneration = () => {
+    if (!generateAbortRef.current) return;
+    generateAbortRef.current.abort();
   };
 
   const updateLocalNode = (id: string, updates: Partial<StoryNode>) => {
@@ -363,7 +436,78 @@ export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) 
                   >
                     {isGenerating ? "生成中..." : "生成"}
                   </button>
+                  {isGenerating && (
+                    <button
+                      onClick={handleAbortGeneration}
+                      className="text-[11px] px-3 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 transition-all"
+                    >
+                      中止生成
+                    </button>
+                  )}
                 </div>
+
+                {(showStreamLog || isGenerating || statusLogs.length > 0 || streamThinking || streamContent || streamError) && (
+                  <div className="rounded-lg border border-purple-500/20 bg-black/20 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-purple-500/15 bg-purple-950/20">
+                      <div>
+                        <div className="text-[12px] font-medium text-purple-200">流式日志面板</div>
+                        <div className="text-[10px] text-purple-300/70">实时显示模型思考和输出内容</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isGenerating && (
+                          <button
+                            onClick={handleAbortGeneration}
+                            className="text-[11px] px-2 py-1 rounded border border-red-500/30 text-red-200 hover:bg-red-500/15 transition-colors"
+                          >
+                            中止生成
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setShowStreamLog((prev) => !prev)}
+                          className="text-[11px] px-2 py-1 rounded border border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        >
+                          {showStreamLog ? "收起" : "展开"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {showStreamLog && (
+                      <div className="p-3 space-y-3 max-h-[320px] overflow-y-auto minimal-scrollbar">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] mb-1.5">状态日志</div>
+                          <div className="space-y-1.5">
+                            {statusLogs.length === 0 ? (
+                              <div className="text-[11px] text-[var(--text-secondary)]">等待开始生成...</div>
+                            ) : (
+                              statusLogs.map((log, index) => (
+                                <div key={`${index}-${log}`} className="text-[11px] text-[var(--text-primary)] bg-white/5 rounded-md px-2 py-1.5 border border-white/8">
+                                  {log}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wider text-amber-300/70 mb-1.5">思考流</div>
+                            <pre className="min-h-[120px] max-h-[180px] overflow-y-auto whitespace-pre-wrap rounded-md bg-amber-500/5 border border-amber-500/15 p-2 text-[11px] leading-relaxed text-amber-100/80 minimal-scrollbar">{streamThinking || "模型暂未返回 reasoning 内容。"}</pre>
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wider text-indigo-300/70 mb-1.5">输出流</div>
+                            <pre className="min-h-[120px] max-h-[180px] overflow-y-auto whitespace-pre-wrap rounded-md bg-indigo-500/5 border border-indigo-500/15 p-2 text-[11px] leading-relaxed text-indigo-100/80 minimal-scrollbar">{streamContent || "模型暂未返回正文内容。"}</pre>
+                          </div>
+                        </div>
+
+                        {streamError && (
+                          <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                            {streamError}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

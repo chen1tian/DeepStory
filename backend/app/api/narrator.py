@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.models.schemas import (
     CreateArcRequest,
@@ -21,6 +23,7 @@ from app.models.schemas import (
 from app.services.narrator_service import (
     archive_current_arc,
     generate_nodes_with_ai,
+    generate_nodes_with_ai_stream,
     load_arc,
     load_arc_collection,
     save_arc,
@@ -176,6 +179,22 @@ async def generate_nodes(session_id: str, body: GenerateNodesRequest):
         connection_id=body.connection_id,
     )
     return {"nodes": nodes}
+
+
+@router.post("/narrator/{session_id}/generate-nodes/stream")
+async def generate_nodes_stream(session_id: str, body: GenerateNodesRequest):
+    """AI-assisted story node generation with raw model streaming logs."""
+
+    async def event_stream():
+        async for event in generate_nodes_with_ai_stream(
+            goal=body.goal,
+            count=body.count,
+            context=body.context,
+            connection_id=body.connection_id,
+        ):
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 
 # ── Directive management ──

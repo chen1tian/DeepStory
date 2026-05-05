@@ -802,6 +802,13 @@ export interface GenerateNodesRequest {
   connection_id?: string | null;
 }
 
+export type GenerateNodesStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "thinking"; content: string }
+  | { type: "content"; content: string }
+  | { type: "result"; nodes: StoryNode[] }
+  | { type: "error"; message: string };
+
 export interface NarratorUpdatePayload {
   arc_id: string;
   assessment: string;

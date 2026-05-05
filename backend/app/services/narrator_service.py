@@ -4,7 +4,7 @@ import json
 import re
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, AsyncIterator
 
 import aiofiles
 import structlog
@@ -19,7 +19,7 @@ from app.models.schemas import (
     StateData,
     StoryNode,
 )
-from app.services.llm_service import chat_completion
+from app.services.llm_service import chat_completion, chat_completion_stream
 from app.storage.narrator_storage import load_narrator, save_narrator
 
 log = structlog.get_logger()
@@ -387,24 +387,31 @@ async def generate_nodes_with_ai(
     connection_id: str | None = None,
 ) -> list[dict]:
     """Use LLM to generate a list of story nodes for the given goal."""
+    messages = await _build_generate_nodes_messages(goal=goal, count=count, context=context)
+
+    raw = await chat_completion(messages, connection_id=connection_id)
+    return _normalize_generated_nodes(raw)
+
+
+async def _build_generate_nodes_messages(goal: str, count: int, context: str) -> list[dict[str, str]]:
     system_prompt = await _load_template("narrator_generate.txt")
 
     user_content_parts = [f"故事目标：{goal}", f"需要生成的节点数量：{count}"]
     if context:
         user_content_parts.append(f"已有故事背景：{context}")
 
-    messages = [
+    return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": "\n".join(user_content_parts)},
     ]
 
-    raw = await chat_completion(messages, connection_id=connection_id)
+
+def _normalize_generated_nodes(raw: str) -> list[dict[str, Any]]:
     nodes_data = _extract_json(raw)
 
     if not isinstance(nodes_data, list):
         raise ValueError("Expected a JSON array of story nodes")
 
-    # Inject auto-generated IDs and timestamps
     result = []
     for i, node in enumerate(nodes_data):
         result.append({
@@ -418,3 +425,37 @@ async def generate_nodes_with_ai(
             "created_at": datetime.now().isoformat(),
         })
     return result
+
+
+async def generate_nodes_with_ai_stream(
+    goal: str,
+    count: int = 5,
+    context: str = "",
+    connection_id: str | None = None,
+) -> AsyncIterator[dict[str, Any]]:
+    """Stream narrator node generation events and finish with parsed nodes."""
+    messages = await _build_generate_nodes_messages(goal=goal, count=count, context=context)
+    yield {"type": "status", "message": "已发送生成请求，等待模型响应..."}
+
+    raw_content_parts: list[str] = []
+    received_any = False
+
+    try:
+        async for kind, text in chat_completion_stream(messages, connection_id=connection_id):
+            if not text:
+                continue
+            received_any = True
+            if kind == "thinking":
+                yield {"type": "thinking", "content": text}
+            else:
+                raw_content_parts.append(text)
+                yield {"type": "content", "content": text}
+
+        if not received_any:
+            yield {"type": "status", "message": "模型未返回可见内容，尝试解析空响应..."}
+
+        raw = "".join(raw_content_parts)
+        nodes = _normalize_generated_nodes(raw)
+        yield {"type": "result", "nodes": nodes}
+    except Exception as exc:
+        yield {"type": "error", "message": str(exc)}
