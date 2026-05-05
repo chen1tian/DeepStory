@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import structlog
 from datetime import datetime
 
@@ -497,11 +498,17 @@ def build_rpg_summary(rpg: RPGStateData) -> RPGStateSummary:
 import hashlib  # noqa: E402
 
 
+MAP_STYLE_VERSION = "roguelike-v2"
+ROGUELIKE_WIDTH = 30
+ROGUELIKE_HEIGHT = 20
+_EXIT_DIRECTIONS = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"]
+
+
 def _location_map_key(location: str, exits: list[str]) -> str:
-    """Cache key: location name + sorted exits.
-    只有当该地点的出口变化时（新发现通路），才重新生成地形图。
+    """Cache key: map style version + location name + sorted exits.
+    地图风格或出口变化时，都会重新生成地图。
     """
-    content = (location or "") + "|" + ",".join(sorted(set(exits)))
+    content = MAP_STYLE_VERSION + "|" + (location or "") + "|" + ",".join(sorted(set(exits)))
     return hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
 
 
@@ -531,47 +538,188 @@ async def get_cached_map(session_id: str) -> dict | None:
     return cache if cache else None
 
 
-def _build_terrain_prompt(
-    location: str,
-    exits: list[str],
-    explored: list[str],
-) -> str:
-    """Build the LLM prompt for a terrain map of a specific location."""
-    exit_lines: list[str] = []
-    if exits:
-        directions = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"]
-        for i, dest in enumerate(exits):
-            d = directions[i % len(directions)]
-            exit_lines.append(f"  {d}侧 → {dest}")
-    exit_text = "\n".join(exit_lines) if exit_lines else "  （暂无已知出口）"
+def _seeded_rng(location: str, exits: list[str]) -> random.Random:
+    seed_material = MAP_STYLE_VERSION + "|" + (location or "") + "|" + ",".join(sorted(set(exits)))
+    seed = int(hashlib.sha256(seed_material.encode("utf-8")).hexdigest()[:16], 16)
+    return random.Random(seed)
 
-    other_locs = [l for l in explored if l != location]
-    other_text = "、".join(other_locs) if other_locs else "（暂无）"
 
-    return (
-        f"请为RPG场景「{location}」绘制一幅30x30的字符地形图。\n\n"
-        f"已探索的其他地点：{other_text}\n\n"
-        f"从本地图可以前往的地点（出口）：\n{exit_text}\n\n"
-        "地形符号参考：\n"
-        "  ≈ ~  水域（河流、湖泊、海岸）\n"
-        "  . ·  草地 / 平原\n"
-        "  ^  森林 / 密林\n"
-        "  # ▲  山峦 / 岩石 / 高地\n"
-        "  ,  沙地 / 沙滩 / 荒漠\n"
-        "  = ≡  道路 / 石板路\n"
-        "  @  建筑 / 房屋 / 城镇中心\n"
-        "  *  树木 / 灌木 / 特殊标志物\n"
-        "  +  栅栏 / 围墙\n"
-        "  %  沼泽 / 湿地\n\n"
-        "标记规则（重要）：\n"
-        f"1. 玩家当前位置用 ★ 标记，放在场景合理的入口位置\n"
-        "2. 出口统一标记为 ◆[地点名]，放置在对应方向的边界上\n"
-        "3. 地图四周用合适的边界字符（~ = # 等）围起来\n"
-        "4. 地形过渡要自然，不要出现突兀的变化\n"
-        "5. 适当添加装饰性地形，让地图丰富有层次\n"
-        "6. 地图宽度不超过30列，高度不超过30行\n"
-        "7. 只输出地图本身，不要任何额外说明、标题或markdown标记"
+def _room_center(room: tuple[int, int, int, int]) -> tuple[int, int]:
+    x1, y1, x2, y2 = room
+    return ((x1 + x2) // 2, (y1 + y2) // 2)
+
+
+def _rooms_overlap(
+    room: tuple[int, int, int, int],
+    others: list[tuple[int, int, int, int]],
+    padding: int = 1,
+) -> bool:
+    x1, y1, x2, y2 = room
+    for ox1, oy1, ox2, oy2 in others:
+        if not (x2 + padding < ox1 or ox2 + padding < x1 or y2 + padding < oy1 or oy2 + padding < y1):
+            return True
+    return False
+
+
+def _carve_room(grid: list[list[str]], room: tuple[int, int, int, int]) -> None:
+    x1, y1, x2, y2 = room
+    for y in range(y1, y2 + 1):
+        for x in range(x1, x2 + 1):
+            grid[y][x] = "."
+
+
+def _carve_h_corridor(grid: list[list[str]], x1: int, x2: int, y: int) -> None:
+    for x in range(min(x1, x2), max(x1, x2) + 1):
+        grid[y][x] = "."
+
+
+def _carve_v_corridor(grid: list[list[str]], y1: int, y2: int, x: int) -> None:
+    for y in range(min(y1, y2), max(y1, y2) + 1):
+        grid[y][x] = "."
+
+
+def _connect_rooms(
+    grid: list[list[str]],
+    start: tuple[int, int],
+    end: tuple[int, int],
+    rng: random.Random,
+) -> None:
+    x1, y1 = start
+    x2, y2 = end
+    if rng.random() < 0.5:
+        _carve_h_corridor(grid, x1, x2, y1)
+        _carve_v_corridor(grid, y1, y2, x2)
+    else:
+        _carve_v_corridor(grid, y1, y2, x1)
+        _carve_h_corridor(grid, x1, x2, y2)
+
+
+def _direction_target(direction: str) -> tuple[int, int]:
+    targets = {
+        "北": (ROGUELIKE_WIDTH // 2, 1),
+        "东北": (ROGUELIKE_WIDTH - 2, 1),
+        "东": (ROGUELIKE_WIDTH - 2, ROGUELIKE_HEIGHT // 2),
+        "东南": (ROGUELIKE_WIDTH - 2, ROGUELIKE_HEIGHT - 2),
+        "南": (ROGUELIKE_WIDTH // 2, ROGUELIKE_HEIGHT - 2),
+        "西南": (1, ROGUELIKE_HEIGHT - 2),
+        "西": (1, ROGUELIKE_HEIGHT // 2),
+        "西北": (1, 1),
+    }
+    return targets.get(direction, (ROGUELIKE_WIDTH // 2, 1))
+
+
+def _pick_exit_room(
+    rooms: list[tuple[int, int, int, int]],
+    direction: str,
+) -> tuple[int, int, int, int]:
+    target_x, target_y = _direction_target(direction)
+    return min(
+        rooms,
+        key=lambda room: abs(_room_center(room)[0] - target_x) + abs(_room_center(room)[1] - target_y),
     )
+
+
+def _exit_position(room: tuple[int, int, int, int], direction: str) -> tuple[int, int]:
+    x1, y1, x2, y2 = room
+    center_x, center_y = _room_center(room)
+    if direction == "北":
+        return (center_x, y1)
+    if direction == "东北":
+        return (x2, y1)
+    if direction == "东":
+        return (x2, center_y)
+    if direction == "东南":
+        return (x2, y2)
+    if direction == "南":
+        return (center_x, y2)
+    if direction == "西南":
+        return (x1, y2)
+    if direction == "西":
+        return (x1, center_y)
+    return (x1, y1)
+
+
+def _seal_walls(grid: list[list[str]]) -> None:
+    walkable = {".", "@", ">"}
+    height = len(grid)
+    width = len(grid[0]) if grid else 0
+    updates: list[tuple[int, int]] = []
+    for y in range(height):
+        for x in range(width):
+            if grid[y][x] != " ":
+                continue
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    nx = x + dx
+                    ny = y + dy
+                    if 0 <= nx < width and 0 <= ny < height and grid[ny][nx] in walkable:
+                        updates.append((x, y))
+                        dx = 2
+                        break
+                else:
+                    continue
+                break
+    for x, y in updates:
+        grid[y][x] = "#"
+
+
+def _generate_roguelike_map(location: str, exits: list[str]) -> str:
+    rng = _seeded_rng(location, exits)
+    grid = [[" " for _ in range(ROGUELIKE_WIDTH)] for _ in range(ROGUELIKE_HEIGHT)]
+
+    rooms: list[tuple[int, int, int, int]] = []
+    target_room_count = min(7, max(4, 3 + len(exits)))
+    attempts = 24
+
+    for _ in range(attempts):
+        if len(rooms) >= target_room_count:
+            break
+        room_width = rng.randint(4, 7)
+        room_height = rng.randint(3, 5)
+        x1 = rng.randint(2, ROGUELIKE_WIDTH - room_width - 3)
+        y1 = rng.randint(2, ROGUELIKE_HEIGHT - room_height - 3)
+        room = (x1, y1, x1 + room_width - 1, y1 + room_height - 1)
+        if _rooms_overlap(room, rooms, padding=1):
+            continue
+        _carve_room(grid, room)
+        if rooms:
+            _connect_rooms(grid, _room_center(rooms[-1]), _room_center(room), rng)
+        rooms.append(room)
+
+    if not rooms:
+        fallback_room = (10, 6, 19, 12)
+        _carve_room(grid, fallback_room)
+        rooms.append(fallback_room)
+
+    player_x, player_y = _room_center(rooms[0])
+    grid[player_y][player_x] = "@"
+
+    exit_specs: list[tuple[str, str]] = []
+    used_positions: set[tuple[int, int]] = {(player_x, player_y)}
+    for index, destination in enumerate(exits):
+        direction = _EXIT_DIRECTIONS[index % len(_EXIT_DIRECTIONS)]
+        room = _pick_exit_room(rooms, direction)
+        exit_x, exit_y = _exit_position(room, direction)
+        if (exit_x, exit_y) in used_positions:
+            center_x, center_y = _room_center(room)
+            exit_x, exit_y = center_x, center_y
+        grid[exit_y][exit_x] = ">"
+        used_positions.add((exit_x, exit_y))
+        exit_specs.append((direction, destination))
+
+    _seal_walls(grid)
+
+    lines = ["".join(row).rstrip() for row in grid]
+    legend = ["", f"当前位置: {location}", "符号: @ 你  > 出口"]
+    if exit_specs:
+        legend.append("出口图例:")
+        for direction, destination in exit_specs:
+            legend.append(f"{direction}: ◆[{destination}]")
+    else:
+        legend.append("出口图例: 暂无已知出口")
+    return "\n".join(lines + legend)
 
 
 async def generate_ascii_map(
@@ -581,12 +729,10 @@ async def generate_ascii_map(
     explored: list[str],
     connection_id: str | None = None,
 ) -> dict:
-    """Generate (or return cached) 80x80 terrain map for the current location.
+    """Generate (or return cached) roguelike ASCII map for the current location.
     每个地点一张地形图，缓存在 map_cache.json 中。
     再次进入同一地点直接返回缓存，不重新生成。
     """
-    from app.services.llm_service import chat_completion
-
     exits = connections.get(location, [])
     map_key = _location_map_key(location, exits)
 
@@ -597,29 +743,8 @@ async def generate_ascii_map(
     if map_key in maps:
         return {"cache_key": map_key, "ascii_map": maps[map_key]}
 
-    # Generate new terrain map for this location
-    prompt = _build_terrain_prompt(location, exits, explored)
-
     try:
-        result = await chat_completion(
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "你是RPG字符地形图生成器。只返回地图本身，不含任何说明文字或markdown标记。"
-                        "地形分布要合理自然，边界完整。"
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            connection_id=connection_id,
-        )
-        ascii_map = result.strip("\n\r")
-        if ascii_map.strip().startswith("```"):
-            ascii_map = ascii_map.strip()
-            lines = ascii_map.split("\n")
-            end = -1 if lines[-1].strip() == "```" else len(lines)
-            ascii_map = "\n".join(lines[1:end]).strip("\n\r")
+        ascii_map = _generate_roguelike_map(location, exits)
     except Exception:
         log.exception("map_generation_failed", session_id=session_id)
         ascii_map = _fallback_map(location, explored, connections)
@@ -635,12 +760,24 @@ async def generate_ascii_map(
 def _fallback_map(
     location: str, explored: list[str], connections: dict[str, list[str]]
 ) -> str:
-    """Simple text fallback when LLM generation fails."""
+    """Simple roguelike fallback when map generation fails."""
     exits = connections.get(location, [])
-    lines = [f"~~~ {location} ~~~", ""]
-    lines.append("地形: 未知（地图生成失败）")
-    lines.append(f"★ 当前位置: {location}")
+    lines = [
+        "  ##########",
+        " ##........##",
+        " #....@.....#",
+        " #..........#",
+        " ##....>...##",
+        "  ##########",
+        "",
+        f"当前位置: {location}",
+        "符号: @ 你  > 出口",
+    ]
     if exits:
-        for e in exits:
-            lines.append(f"◆[{e}]")
+        lines.append("出口图例:")
+        for index, destination in enumerate(exits):
+            direction = _EXIT_DIRECTIONS[index % len(_EXIT_DIRECTIONS)]
+            lines.append(f"{direction}: ◆[{destination}]")
+    else:
+        lines.append("出口图例: 暂无已知出口")
     return "\n".join(lines)

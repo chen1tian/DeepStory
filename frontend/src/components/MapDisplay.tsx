@@ -311,7 +311,7 @@ export default function MapOverlay() {
                 textAlign: "center",
               }}
             >
-              点击金色◆出口或紫色地点可预填前往指令
+              点击下方图例中的金色◆出口可预填前往指令
             </div>
           )}
         </div>
