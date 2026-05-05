@@ -492,7 +492,7 @@ def build_rpg_summary(rpg: RPGStateData) -> RPGStateSummary:
 
 
 # ─────────────────────────────────────────────────────────────
-# ASCII terrain map generation (30x30, cached per location)
+# ASCII terrain map generation (30x30, cached once per location)
 # ─────────────────────────────────────────────────────────────
 
 import hashlib  # noqa: E402
@@ -504,11 +504,11 @@ ROGUELIKE_HEIGHT = 20
 _EXIT_DIRECTIONS = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"]
 
 
-def _location_map_key(location: str, exits: list[str]) -> str:
-    """Cache key: map style version + location name + sorted exits.
-    地图风格或出口变化时，都会重新生成地图。
+def _location_map_key(location: str) -> str:
+    """Cache key: map style version + location name.
+    同一地点只生成一次；再次进入时直接读取已缓存地图。
     """
-    content = MAP_STYLE_VERSION + "|" + (location or "") + "|" + ",".join(sorted(set(exits)))
+    content = MAP_STYLE_VERSION + "|" + (location or "")
     return hashlib.md5(content.encode("utf-8")).hexdigest()[:12]
 
 
@@ -538,8 +538,8 @@ async def get_cached_map(session_id: str) -> dict | None:
     return cache if cache else None
 
 
-def _seeded_rng(location: str, exits: list[str]) -> random.Random:
-    seed_material = MAP_STYLE_VERSION + "|" + (location or "") + "|" + ",".join(sorted(set(exits)))
+def _seeded_rng(location: str) -> random.Random:
+    seed_material = MAP_STYLE_VERSION + "|" + (location or "")
     seed = int(hashlib.sha256(seed_material.encode("utf-8")).hexdigest()[:16], 16)
     return random.Random(seed)
 
@@ -666,7 +666,7 @@ def _seal_walls(grid: list[list[str]]) -> None:
 
 
 def _generate_roguelike_map(location: str, exits: list[str]) -> str:
-    rng = _seeded_rng(location, exits)
+    rng = _seeded_rng(location)
     grid = [[" " for _ in range(ROGUELIKE_WIDTH)] for _ in range(ROGUELIKE_HEIGHT)]
 
     rooms: list[tuple[int, int, int, int]] = []
@@ -734,7 +734,7 @@ async def generate_ascii_map(
     再次进入同一地点直接返回缓存，不重新生成。
     """
     exits = connections.get(location, [])
-    map_key = _location_map_key(location, exits)
+    map_key = _location_map_key(location)
 
     cache = _load_map_cache(session_id)
     maps = cache.get("maps", {}) if isinstance(cache, dict) else {}
