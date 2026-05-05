@@ -4,6 +4,7 @@ import { useChatStore } from "../stores/chatStore";
 import { useSessionStore } from "../stores/sessionStore";
 import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import { useUIStore } from "../stores/uiStore";
+import { useRoomStore } from "../stores/roomStore";
 
 interface Props {
   onDelete: (messageId: string) => void;
@@ -21,6 +22,7 @@ export default function MessageList({ onDelete, onResend }: Props) {
   const sessions = useSessionStore((s) => s.sessions);
   const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
   const maxMessageCount = useUIStore((s) => s.maxMessageCount);
+  const roomPlayers = useRoomStore((s) => s.roomState?.players ?? []);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -101,6 +103,7 @@ export default function MessageList({ onDelete, onResend }: Props) {
             onConfirmStart={() => setPendingDeleteId(msg.id)}
             onConfirmCancel={() => setPendingDeleteId(null)}
             sessionCharacters={sessionCharacters}
+            roomPlayers={roomPlayers}
             protagonistAvatarUrl={protagonist?.avatar_url ?? null}
             protagonistAvatarEmoji={protagonist?.avatar_emoji ?? "🧑"}
           />
@@ -120,6 +123,7 @@ export default function MessageList({ onDelete, onResend }: Props) {
             }}
             isStreaming
             sessionCharacters={sessionCharacters}
+            roomPlayers={roomPlayers}
           />
         )}
 

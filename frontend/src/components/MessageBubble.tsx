@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
-import type { Message, SessionCharacter } from "../types";
+import type { Message, PlayerInfo, SessionCharacter } from "../types";
 
 interface Props {
   message: Message;
@@ -13,6 +13,8 @@ interface Props {
   onConfirmCancel?: () => void;
   /** Session characters for avatar lookup in multi-player messages */
   sessionCharacters?: SessionCharacter[];
+  /** Room players for avatar lookup in multi-player messages */
+  roomPlayers?: PlayerInfo[];
   /** Protagonist avatar (URL or emoji) for user messages */
   protagonistAvatarUrl?: string | null;
   protagonistAvatarEmoji?: string;
@@ -55,6 +57,34 @@ function findCharacterAvatar(name: string, characters: SessionCharacter[]): { ur
   return null;
 }
 
+function findPlayerAvatar(name: string, players: PlayerInfo[]): { url: string | null; emoji: string } | null {
+  const normalizedName = name.trim().toLowerCase();
+  const match = players.find((player) => {
+    const protagonistName = (player.protagonist_name || "").trim().toLowerCase();
+    const username = (player.username || "").trim().toLowerCase();
+    return protagonistName === normalizedName || username === normalizedName;
+  });
+  if (!match) return null;
+  return {
+    url: match.protagonist_avatar_url,
+    emoji: match.protagonist_avatar || "🧑",
+  };
+}
+
+function renderAvatar(avatar: { url: string | null; emoji: string } | null) {
+  if (avatar?.url) {
+    return <img src={avatar.url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0 mb-0.5 ring-1 ring-inset ring-white/10" />;
+  }
+  if (!avatar) {
+    return null;
+  }
+  return (
+    <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 mb-0.5 ring-1 ring-inset ring-white/10">
+      <span className="text-3xl">{avatar.emoji}</span>
+    </div>
+  );
+}
+
 /** Extract <think>...</think> blocks from content. Handles partial tags during streaming. */
 function parseThinking(content: string): { thinking: string; rest: string } {
   // Complete <think>...</think> blocks
@@ -86,7 +116,7 @@ function parseThinking(content: string): { thinking: string; rest: string } {
 export default function MessageBubble({
   message, isStreaming, isPendingDelete, isConfirming,
   onDelete, onResend, onConfirmStart, onConfirmCancel,
-  sessionCharacters, protagonistAvatarUrl, protagonistAvatarEmoji,
+  sessionCharacters, roomPlayers, protagonistAvatarUrl, protagonistAvatarEmoji,
 }: Props) {
   const isUser = message.role === "user";
   const resendLabel = isUser ? "重发" : "重生成";
@@ -99,7 +129,7 @@ export default function MessageBubble({
 
   // Avatar for single user message
   const userAvatar = isUser
-    ? (protagonistAvatarUrl ? { url: protagonistAvatarUrl, emoji: protagonistAvatarEmoji || "🧑" } : null)
+    ? { url: protagonistAvatarUrl ?? null, emoji: protagonistAvatarEmoji || "🧑" }
     : null;
 
   // Use dedicated thinking field (from API) or fall back to parsing <think> tags
@@ -119,7 +149,8 @@ export default function MessageBubble({
       {multiTurns ? (
         <div className="flex flex-col gap-2 max-w-[92%] md:max-w-[80%]">
           {multiTurns.map((turn, i) => {
-            const charAvatar = sessionCharacters ? findCharacterAvatar(turn.name, sessionCharacters) : null;
+            const roomPlayerAvatar = roomPlayers ? findPlayerAvatar(turn.name, roomPlayers) : null;
+            const charAvatar = roomPlayerAvatar || (sessionCharacters ? findCharacterAvatar(turn.name, sessionCharacters) : null);
             return (
               <div key={i} className="flex items-end gap-2 justify-end">
                 <div className="flex flex-col items-end">
@@ -130,11 +161,7 @@ export default function MessageBubble({
                     {turn.text}
                   </div>
                 </div>
-                {charAvatar?.url ? (
-                  <img src={charAvatar.url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0 mb-0.5" />
-                ) : (
-                  <span className="text-3xl mb-0.5">{charAvatar?.emoji || "🧑"}</span>
-                )}
+                {renderAvatar(charAvatar || { url: null, emoji: "🧑" })}
               </div>
             );
           })}
@@ -200,13 +227,7 @@ export default function MessageBubble({
           </div>
 
           {/* User avatar (right side) */}
-          {isUser && userAvatar && (
-            userAvatar.url ? (
-              <img src={userAvatar.url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0 mb-0.5 ring-1 ring-inset ring-white/10" />
-            ) : (
-              <span className="text-3xl mb-0.5">{userAvatar.emoji}</span>
-            )
-          )}
+          {isUser && renderAvatar(userAvatar)}
         </div>
       )}
 

@@ -113,6 +113,7 @@ async def build_chat_messages(
     # Append protagonist setting(s) to system prompt
     if room_players:
         # Multiplayer: inject each player's protagonist as a separate block
+        multiplayer_prompt = await _load_template("multiplayer_mode.txt")
         protagonist_blocks = []
         for p in room_players:
             pname = p.get("protagonist_name", "") or p.get("username", "玩家")
@@ -129,9 +130,9 @@ async def build_chat_messages(
         if protagonist_blocks:
             system_prompt = (
                 system_prompt
-                + "\n\n【多人扮演模式】\n"
-                + "本次会话有多名玩家，每人扮演各自的角色。你是世界叙事者，"
-                + "负责描述玩家行动后的世界反应，推动故事发展，不要替任何玩家角色主动行动。\n\n"
+                + "\n\n"
+                + multiplayer_prompt
+                + "\n\n"
                 + "\n\n".join(protagonist_blocks)
             )
     elif user_protagonist:
