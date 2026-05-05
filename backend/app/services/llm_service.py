@@ -39,12 +39,12 @@ async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncO
         api_key = settings.api_key or ""
         base_url = str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = settings.model_name or "gpt-4o-mini"
-        temperature = 0.7
+        temperature = 1.0
     else:
         api_key = conn_data.get("api_key") or settings.api_key or ""
         base_url = conn_data.get("api_base_url") or str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = conn_data.get("model_name") or settings.model_name or "gpt-4o-mini"
-        temperature = conn_data.get("temperature", 0.7)
+        temperature = conn_data.get("temperature", 1.0)
 
     cache_key = f"{base_url}:{api_key}"
     if cache_key not in _clients:

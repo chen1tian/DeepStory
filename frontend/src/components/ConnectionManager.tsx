@@ -37,7 +37,7 @@ export default function ConnectionManager({ onClose }: { onClose: () => void }) 
       api_key: "",
       api_base_url: "https://api.openai.com/v1",
       model_name: "gpt-4o-mini",
-      temperature: 0.7,
+      temperature: 1.0,
     });
     setEditingId(c.id);
   };
@@ -393,7 +393,7 @@ function ConnectionForm({
             className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
             value={form.temperature}
             onChange={(e) => update("temperature", Math.max(0, Math.min(2, Number(e.target.value) || 0)))}
-            placeholder="0.7"
+            placeholder="1.0"
           />
           <div className="text-[12px] text-[var(--text-secondary)]">范围 0 到 2，数值越高随机性越强。</div>
         </div>

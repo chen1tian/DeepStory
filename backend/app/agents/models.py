@@ -40,12 +40,12 @@ async def resolve_connection_params(
         api_key = settings.api_key or ""
         base_url = str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = settings.model_name or "gpt-4o-mini"
-        temperature = 0.7
+        temperature = 1.0
     else:
         api_key = conn_data.get("api_key") or settings.api_key or ""
         base_url = conn_data.get("api_base_url") or str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = conn_data.get("model_name") or settings.model_name or "gpt-4o-mini"
-        temperature = conn_data.get("temperature", 0.7)
+        temperature = conn_data.get("temperature", 1.0)
 
     return api_key, base_url, model_name, float(temperature)
 
@@ -55,7 +55,7 @@ def create_dynamic_model(
     base_url: str,
     model_name: str,
     streaming: bool = True,
-    temperature: float = 0.7,
+    temperature: float = 1.0,
 ) -> ChatOpenAI:
     """Create a LangChain ChatOpenAI model from connection parameters.
 

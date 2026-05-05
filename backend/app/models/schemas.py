@@ -464,7 +464,7 @@ class Connection(BaseModel):
     api_key: str = ""
     api_base_url: str = ""
     model_name: str = "gpt-4o-mini"
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=1.0, ge=0.0, le=2.0)
     is_default: bool = False
     image_gen_config: ImageGenConfig | None = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
@@ -476,7 +476,7 @@ class CreateConnectionRequest(BaseModel):
     api_key: str = ""
     api_base_url: str = ""
     model_name: str = "gpt-4o-mini"
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=1.0, ge=0.0, le=2.0)
     is_default: bool = False
     image_gen_config: ImageGenConfig | None = None
 
