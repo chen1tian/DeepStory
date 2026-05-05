@@ -63,12 +63,17 @@ export default function ChatView({ immersiveMode = false }: { immersiveMode?: bo
   return (
     <div className="relative flex flex-col h-full bg-[var(--bg-primary)]">
       {!immersiveMode && <RoomPanel />}
-      <MessageList onDelete={handleDelete} onResend={handleResend} showPendingTurns={!immersiveMode} />
+      <MessageList
+        onDelete={handleDelete}
+        onResend={handleResend}
+        showPendingTurns={!immersiveMode}
+        immersiveMode={immersiveMode}
+      />
       {!immersiveMode && <SceneActions />}
       {!immersiveMode && <HookResultPanel />}
       <div className="w-full relative shadow-[0_-20px_40px_-5px_rgba(26,26,46,0.9)]">
         <MessageInput />
-        <TokenBudgetBar />
+        {!immersiveMode && <TokenBudgetBar />}
       </div>
     </div>
   );

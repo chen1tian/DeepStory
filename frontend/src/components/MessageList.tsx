@@ -10,6 +10,7 @@ interface Props {
   onDelete: (messageId: string) => void;
   onResend: (messageId: string) => void;
   showPendingTurns?: boolean;
+  immersiveMode?: boolean;
 }
 
 const PLAYER_COLORS = [
@@ -21,7 +22,7 @@ const PLAYER_COLORS = [
   "border-amber-500/40 bg-amber-500/10 text-amber-300",
 ];
 
-export default function MessageList({ onDelete, onResend, showPendingTurns = false }: Props) {
+export default function MessageList({ onDelete, onResend, showPendingTurns = false, immersiveMode = false }: Props) {
   const messages = useChatStore((s) => s.messages);
   const streamingContent = useChatStore((s) => s.streamingContent);
   const streamingThinking = useChatStore((s) => s.streamingThinking);
@@ -98,7 +99,7 @@ export default function MessageList({ onDelete, onResend, showPendingTurns = fal
     <div
       ref={scrollContainerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4 py-6 md:px-6 md:py-8 flex flex-col gap-6 scroll-smooth minimal-scrollbar"
+      className={`flex-1 overflow-y-auto px-4 py-6 md:px-6 md:py-8 flex flex-col gap-6 scroll-smooth minimal-scrollbar ${immersiveMode ? "justify-end" : ""}`}
     >
       {displayMessages.length === 0 && !isStreaming && (
         <div className="m-auto flex flex-col items-center justify-center text-center text-[var(--text-secondary)] mt-20 space-y-3">
@@ -199,7 +200,7 @@ export default function MessageList({ onDelete, onResend, showPendingTurns = fal
           </div>
         )}
 
-        {tokenBudget && tokenBudget.total > 0 && (
+        {!immersiveMode && tokenBudget && tokenBudget.total > 0 && (
           <div className="flex w-full justify-center pb-1">
             <span className="text-[11px] text-[var(--text-secondary)]/50">
               发送 {tokenBudget.prompt_tokens.toLocaleString()} tokens · 上限 {tokenBudget.total.toLocaleString()} tokens · {messages.length} 条消息
