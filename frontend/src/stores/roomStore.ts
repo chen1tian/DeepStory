@@ -53,6 +53,8 @@ export const useRoomStore = create<RoomStoreState>((set, get) => ({
   handleRoomMessage: (msg: WSMessageOut) => {
     if (msg.type === "room_state" && msg.data) {
       set({ roomState: msg.data as unknown as RoomState });
+    } else if (msg.type === "room_closed") {
+      set({ roomState: null, sessionId: null, stagedContent: "", isProcessing: false });
     } else if (msg.type === "round_processing") {
       set({ isProcessing: true });
     } else if (msg.type === "round_started" && msg.data) {

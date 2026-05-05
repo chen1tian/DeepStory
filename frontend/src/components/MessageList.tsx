@@ -33,8 +33,10 @@ export default function MessageList({ onDelete, onResend, showPendingTurns = fal
   const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
   const maxMessageCount = useUIStore((s) => s.maxMessageCount);
   const roomState = useRoomStore((s) => s.roomState);
+  const roomSessionId = useRoomStore((s) => s.sessionId);
   const isProcessing = useRoomStore((s) => s.isProcessing);
-  const roomPlayers = roomState?.players ?? [];
+  const activeRoomState = roomSessionId === currentSessionId ? roomState : null;
+  const roomPlayers = activeRoomState?.players ?? [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function MessageList({ onDelete, onResend, showPendingTurns = fal
   const protagonist = session?.user_protagonist_id
     ? userProtagonists.find((p) => p.id === session.user_protagonist_id)
     : null;
-  const pendingEntries = roomState ? Object.entries(roomState.pending_turns) : [];
+  const pendingEntries = activeRoomState ? Object.entries(activeRoomState.pending_turns) : [];
   const hasPendingTurns = showPendingTurns && (pendingEntries.length > 0 || isProcessing);
 
   const pendingDeleteDisplayIdx = pendingDeleteId

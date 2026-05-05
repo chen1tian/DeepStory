@@ -35,6 +35,14 @@ async def load_room_state(session_id: str) -> dict | None:
         return json.loads(await f.read())
 
 
+async def load_all_room_states() -> list[dict]:
+    rooms: list[dict] = []
+    for path in _rooms_dir().glob("*.json"):
+        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+            rooms.append(json.loads(await f.read()))
+    return rooms
+
+
 async def delete_room_state(session_id: str) -> None:
     path = _room_path(session_id)
     if path.exists():

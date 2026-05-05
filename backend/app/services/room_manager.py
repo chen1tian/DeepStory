@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import random
 import string
+from collections.abc import Iterable
 
 import structlog
 
 from app.models.schemas import PlayerInfo, RoomState
-from app.storage.room_storage import delete_room_state, load_room_state, save_room_state
+from app.storage.room_storage import delete_room_state, load_all_room_states, load_room_state, save_room_state
 
 log = structlog.get_logger()
 
@@ -57,8 +58,18 @@ async def _load_from_storage(session_id: str) -> RoomState | None:
     return room
 
 
+def _cache_room(room: RoomState) -> RoomState:
+    _rooms[room.session_id] = room
+    _code_to_session[room.room_code.upper()] = room.session_id
+    return room
+
+
+def _normalize_code(code: str) -> str:
+    return code.strip().upper()
+
+
 def get_room_by_code(code: str) -> RoomState | None:
-    session_id = _code_to_session.get(code.upper())
+    session_id = _code_to_session.get(_normalize_code(code))
     if session_id is None:
         return None
     return _rooms.get(session_id)
@@ -73,6 +84,28 @@ async def get_or_load_room(session_id: str) -> RoomState | None:
     if room is not None:
         return room
     return await _load_from_storage(session_id)
+
+
+async def get_or_load_room_by_code(code: str) -> RoomState | None:
+    normalized = _normalize_code(code)
+    session_id = _code_to_session.get(normalized)
+    if session_id:
+        room = _rooms.get(session_id)
+        if room is not None and _normalize_code(room.room_code) == normalized:
+            return room
+        data = await load_room_state(session_id)
+        if data is not None:
+            room = RoomState(**data)
+            if _normalize_code(room.room_code) == normalized:
+                return _cache_room(room)
+        _code_to_session.pop(normalized, None)
+
+    stored_rooms = await load_all_room_states()
+    for data in stored_rooms:
+        room = RoomState(**data)
+        if _normalize_code(room.room_code) == normalized:
+            return _cache_room(room)
+    return None
 
 
 async def join_room(session_id: str, user_id: str, username: str,
@@ -169,8 +202,12 @@ async def remove_player(session_id: str, user_id: str) -> RoomState | None:
 
 async def close_room(session_id: str) -> None:
     room = _rooms.pop(session_id, None)
+    if room is None:
+        data = await load_room_state(session_id)
+        if data is not None:
+            room = RoomState(**data)
     if room:
-        _code_to_session.pop(room.room_code, None)
+        _code_to_session.pop(_normalize_code(room.room_code), None)
     await delete_room_state(session_id)
     log.info("room_closed", session_id=session_id)
 

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, type KeyboardEvent } from "react";
 import { useChatStore } from "../stores/chatStore";
 import { useRoomStore } from "../stores/roomStore";
 import { useAuthStore } from "../stores/authStore";
+import { useSessionStore } from "../stores/sessionStore";
 
 export default function MessageInput() {
   const [text, setText] = useState("");
@@ -13,14 +14,17 @@ export default function MessageInput() {
   const isStreaming = useChatStore((s) => s.isStreaming);
 
   const roomState = useRoomStore((s) => s.roomState);
+  const roomSessionId = useRoomStore((s) => s.sessionId);
   const isProcessing = useRoomStore((s) => s.isProcessing);
   const stagedContent = useRoomStore((s) => s.stagedContent);
   const setStagedContent = useRoomStore((s) => s.setStagedContent);
   const user = useAuthStore((s) => s.user);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
 
-  const isRoomMode = roomState !== null;
-  const isHost = isRoomMode && user?.id === roomState?.host_user_id;
-  const myPlayer = roomState?.players.find((p) => p.user_id === user?.id);
+  const activeRoomState = roomSessionId === currentSessionId ? roomState : null;
+  const isRoomMode = activeRoomState !== null;
+  const isHost = isRoomMode && user?.id === activeRoomState?.host_user_id;
+  const myPlayer = activeRoomState?.players.find((p) => p.user_id === user?.id);
   const hasSubmitted = myPlayer?.has_submitted ?? false;
 
   // Normal send (solo)

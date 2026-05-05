@@ -307,7 +307,8 @@ export interface WSMessageOut {
     | "token_budget"
     | "room_state"
     | "round_processing"
-    | "round_started";
+    | "round_started"
+    | "room_closed";
   content?: string;
   message_id?: string;
   status?: string;

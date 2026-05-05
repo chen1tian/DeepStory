@@ -10,6 +10,7 @@ from app.models.schemas import (
     RoomState,
 )
 from app.services import room_manager
+from app.services.event_bus import event_bus
 from app.services.chat_manager import load_session
 from app.storage.user_protagonist_storage import load_user_protagonist
 
@@ -29,7 +30,7 @@ async def create_room(
     user: dict = Depends(get_current_user),
 ):
     """Host creates a multiplayer room for a session they own."""
-    existing = room_manager.get_room_by_session(req.session_id)
+    existing = await room_manager.get_or_load_room(req.session_id)
     if existing:
         # Already exists — return current state
         return existing
@@ -56,7 +57,7 @@ async def join_room(
     req: JoinRoomRequest,
     user: dict = Depends(get_current_user),
 ):
-    room = room_manager.get_room_by_code(req.room_code)
+    room = await room_manager.get_or_load_room_by_code(req.room_code)
     if room is None:
         raise HTTPException(status_code=404, detail="房间不存在或已关闭")
     if room.round_status == "processing":
@@ -98,12 +99,13 @@ async def close_room(
     session_id: str,
     user: dict = Depends(get_current_user),
 ):
-    room = room_manager.get_room_by_session(session_id)
+    room = await room_manager.get_or_load_room(session_id)
     if room is None:
         raise HTTPException(status_code=404, detail="房间不存在")
     if room.host_user_id != user["id"]:
         raise HTTPException(status_code=403, detail="只有房主可以关闭房间")
     await room_manager.close_room(session_id)
+    await event_bus.emit("room_closed", session_id=session_id, reason="房主已关闭房间")
 
 
 @router.delete("/rooms/{session_id}/leave", status_code=204)
@@ -111,11 +113,12 @@ async def leave_room(
     session_id: str,
     user: dict = Depends(get_current_user),
 ):
-    room = room_manager.get_room_by_session(session_id)
+    room = await room_manager.get_or_load_room(session_id)
     if room is None:
         return
     if room.host_user_id == user["id"]:
         # Host leaves → close room
         await room_manager.close_room(session_id)
+        await event_bus.emit("room_closed", session_id=session_id, reason="房主已关闭房间")
     else:
         await room_manager.remove_player(session_id, user["id"])

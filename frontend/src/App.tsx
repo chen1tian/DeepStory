@@ -168,8 +168,10 @@ function MainApp() {
   const loadArc = useNarratorStore((s) => s.loadArc);
   const arc = useNarratorStore((s) => s.arc);
   const roomState = useRoomStore((s) => s.roomState);
+  const roomSessionId = useRoomStore((s) => s.sessionId);
 
   const sessions = useSessionStore((s) => s.sessions);
+  const activeRoomState = roomSessionId === currentSessionId ? roomState : null;
 
   useEffect(() => {
     fetchSessions();
@@ -404,7 +406,7 @@ function MainApp() {
                       >
                         🔗 Hooks
                       </button>
-                      {!roomState && currentSessionId && (
+                      {!activeRoomState && currentSessionId && (
                         <button
                           type="button"
                           onClick={() => { setShowCreateRoom(true); setImmersivePanel(null); }}
@@ -415,7 +417,7 @@ function MainApp() {
                       )}
                       <button
                         type="button"
-                        disabled={!!roomState}
+                        disabled={!!activeRoomState}
                         onClick={() => { setShowJoinRoom(true); setImmersivePanel(null); }}
                         className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-left text-[13px] text-[var(--text-secondary)] transition-colors hover:text-white hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-40"
                       >
@@ -568,7 +570,7 @@ function MainApp() {
             <span className="text-[14px]">🔗</span> Hooks
           </button>
           {/* Multiplayer buttons */}
-          {!roomState && currentSessionId && (
+          {!activeRoomState && currentSessionId && (
             <button
               onClick={() => setShowCreateRoom(true)}
               className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 border border-transparent"
@@ -579,7 +581,7 @@ function MainApp() {
           )}
           <button
             onClick={() => setShowJoinRoom(true)}
-            disabled={!!roomState}
+            disabled={!!activeRoomState}
             className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/5 disabled:opacity-30 transition-all flex items-center gap-1.5 border border-transparent"
             title="加入多人房间"
           >

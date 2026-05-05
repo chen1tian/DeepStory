@@ -141,6 +141,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
           break;
 
+        case "room_closed":
+          import("./roomStore").then(({ useRoomStore }) => {
+            useRoomStore.getState().handleRoomMessage(msg);
+          });
+          import("./uiStore").then(({ useUIStore }) => {
+            useUIStore.getState().addToast(msg.content || "房间已关闭", "info");
+          });
+          break;
+
         case "round_started":
           import("./roomStore").then(({ useRoomStore }) => {
             useRoomStore.getState().handleRoomMessage(msg);

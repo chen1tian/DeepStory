@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useChatStore } from "../stores/chatStore";
 import { useRoomStore } from "../stores/roomStore";
 import { useAuthStore } from "../stores/authStore";
+import { useSessionStore } from "../stores/sessionStore";
 
 export default function SceneActions() {
   const stateData = useChatStore((s) => s.stateData);
@@ -9,9 +10,11 @@ export default function SceneActions() {
   const submitTurn = useChatStore((s) => s.submitTurn);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const roomState = useRoomStore((s) => s.roomState);
+  const roomSessionId = useRoomStore((s) => s.sessionId);
   const isProcessing = useRoomStore((s) => s.isProcessing);
   const setStagedContent = useRoomStore((s) => s.setStagedContent);
   const user = useAuthStore((s) => s.user);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const [activeObjectName, setActiveObjectName] = useState<string | null>(null);
   const [customObjectAction, setCustomObjectAction] = useState("");
   const [isObjectPanelCollapsed, setIsObjectPanelCollapsed] = useState(false);
@@ -21,7 +24,8 @@ export default function SceneActions() {
   const exits = (scene?.exits || []).filter((e) => e.accessible !== false);
   const npcs = (scene?.npcs || []);
   const activeObject = interactables.find((obj) => obj.name === activeObjectName) || null;
-  const myPlayer = roomState?.players.find((player) => player.user_id === user?.id);
+  const activeRoomState = roomSessionId === currentSessionId ? roomState : null;
+  const myPlayer = activeRoomState?.players.find((player) => player.user_id === user?.id);
   const hasSubmitted = myPlayer?.has_submitted ?? false;
   const actionsDisabled = isStreaming || isProcessing || hasSubmitted;
 
@@ -44,7 +48,7 @@ export default function SceneActions() {
     if (actionsDisabled) return;
     setActiveObjectName(null);
     setCustomObjectAction("");
-    if (roomState) {
+    if (activeRoomState) {
       setStagedContent("");
       submitTurn(text);
       return;

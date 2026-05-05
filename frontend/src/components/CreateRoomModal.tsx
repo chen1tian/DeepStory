@@ -14,6 +14,29 @@ export default function CreateRoomModal({ sessionId, onClose }: Props) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const copyWithFallback = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const succeeded = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (!succeeded) {
+      throw new Error("copy_failed");
+    }
+  };
+
   const handleCreate = async () => {
     setLoading(true);
     try {
@@ -26,11 +49,16 @@ export default function CreateRoomModal({ sessionId, onClose }: Props) {
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!roomCode) return;
-    navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await copyWithFallback(roomCode);
+      setCopied(true);
+      addToast("房间码已复制", "success");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      addToast("当前环境不支持自动复制，请手动复制房间码", "error");
+    }
   };
 
   return (

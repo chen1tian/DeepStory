@@ -71,8 +71,13 @@ async def _on_state_updated(session_id: str, data: dict | None = None, **kwargs)
     await _push_to_session(session_id, WSMessageOut(type="state_updated", data=data))
 
 
+async def _on_room_closed(session_id: str, reason: str = "房间已关闭", **kwargs):
+    await _push_to_session(session_id, WSMessageOut(type="room_closed", content=reason))
+
+
 event_bus.on("summary_complete", _on_summary_complete)
 event_bus.on("state_updated", _on_state_updated)
+event_bus.on("room_closed", _on_room_closed)
 
 
 @ws_router.websocket("/ws/chat/{session_id}")
@@ -89,9 +94,9 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
         return
 
     # Room check: if session belongs to a room, use host's data dir
-    room = await room_manager.get_or_load_room(session_id)
-    if room is not None:
-        set_user_id(room.host_user_id)
+    initial_room = await room_manager.get_or_load_room(session_id)
+    if initial_room is not None:
+        set_user_id(initial_room.host_user_id)
     else:
         set_user_id(user["id"])
 
@@ -105,7 +110,7 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
     log.info("ws_connected", session_id=session_id)
 
     # Notify room members this player connected
-    if room is not None:
+    if initial_room is not None:
         updated_room = await room_manager.set_player_online(session_id, user["id"], True)
         await _push_to_session(session_id, WSMessageOut(
             type="room_state",
@@ -125,9 +130,10 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
                 await ws.send_text(WSMessageOut(type="pong").model_dump_json())
                 continue
 
+            current_room = room_manager.get_room_by_session(session_id)
+
             # --- Room-specific message types ---
             if msg_in.type in ("submit_turn", "retract_turn", "force_submit"):
-                current_room = room_manager.get_room_by_session(session_id)
                 if current_room is None:
                     await ws.send_text(WSMessageOut(type="error", content="当前会话不在多人房间中").model_dump_json())
                     continue
@@ -193,7 +199,7 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
                 continue
 
             # Normal solo chat
-            if room is not None:
+            if current_room is not None:
                 await ws.send_text(WSMessageOut(type="error", content="多人模式下请使用 submit_turn").model_dump_json())
                 continue
 
@@ -213,7 +219,8 @@ async def websocket_chat(ws: WebSocket, session_id: str, token: str = Query(defa
     finally:
         _unregister_ws(session_id, ws)
         # Mark player offline in room
-        if room is not None:
+        current_room = room_manager.get_room_by_session(session_id)
+        if current_room is not None:
             updated_room = await room_manager.set_player_online(session_id, user["id"], False)
             if updated_room is not None:
                 await _push_to_session(session_id, WSMessageOut(

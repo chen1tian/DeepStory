@@ -2,17 +2,43 @@ import { useState } from "react";
 import { useRoomStore } from "../stores/roomStore";
 import { useAuthStore } from "../stores/authStore";
 import { useUIStore } from "../stores/uiStore";
+import { useSessionStore } from "../stores/sessionStore";
 
 export default function RoomPanel() {
   const roomState = useRoomStore((s) => s.roomState);
+  const roomSessionId = useRoomStore((s) => s.sessionId);
   const isProcessing = useRoomStore((s) => s.isProcessing);
   const exitRoom = useRoomStore((s) => s.exitRoom);
   const user = useAuthStore((s) => s.user);
   const addToast = useUIStore((s) => s.addToast);
+  const currentSessionId = useSessionStore((s) => s.currentSessionId);
   const [exiting, setExiting] = useState(false);
   const [showCode, setShowCode] = useState(false);
 
-  if (!roomState) return null;
+  if (!roomState || roomSessionId !== currentSessionId) return null;
+
+  const copyWithFallback = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const succeeded = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (!succeeded) {
+      throw new Error("copy_failed");
+    }
+  };
 
   const isHost = user?.id === roomState.host_user_id;
   const myPlayer = roomState.players.find((p) => p.user_id === user?.id);
@@ -28,9 +54,13 @@ export default function RoomPanel() {
     }
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(roomState.room_code);
-    addToast("房间码已复制", "info");
+  const handleCopyCode = async () => {
+    try {
+      await copyWithFallback(roomState.room_code);
+      addToast("房间码已复制", "info");
+    } catch {
+      addToast("当前环境不支持自动复制，请手动复制房间码", "error");
+    }
   };
 
   return (
