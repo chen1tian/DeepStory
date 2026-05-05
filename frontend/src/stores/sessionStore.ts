@@ -56,6 +56,13 @@ function loadOpenTabs(): string[] {
   }
 }
 
+function normalizeOpenSessionIds(ids: string[], currentId?: string | null): string[] {
+  if (currentId && ids.includes(currentId)) {
+    return [currentId];
+  }
+  return ids.length > 0 ? [ids[0]] : [];
+}
+
 export const useSessionStore = create<SessionState>((set, get) => ({
   sessions: [],
   openSessionIds: [],
@@ -69,9 +76,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const savedTabs = loadOpenTabs();
       // Filter out tabs whose sessions no longer exist
       const validIds = new Set(sessions.map((s) => s.id));
-      const openSessionIds = savedTabs.filter((id) => validIds.has(id));
       const saved = localStorage.getItem(LAST_SESSION_KEY);
-      const restoredId = saved && validIds.has(saved) && openSessionIds.includes(saved) ? saved : null;
+      const openSessionIds = normalizeOpenSessionIds(
+        savedTabs.filter((id) => validIds.has(id)),
+        saved && validIds.has(saved) ? saved : null,
+      );
+      const restoredId = openSessionIds[0] ?? null;
       saveOpenTabs(openSessionIds);
       set({ sessions, openSessionIds, loading: false, currentSessionId: restoredId });
     } catch {
@@ -90,7 +100,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     });
     localStorage.setItem(LAST_SESSION_KEY, session.id);
     set((s) => {
-      const openSessionIds = [session.id, ...s.openSessionIds];
+      const openSessionIds = [session.id];
       saveOpenTabs(openSessionIds);
       return {
         sessions: [session, ...s.sessions],
@@ -127,17 +137,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   openTab: (id: string) => {
-    set((s) => {
-      if (s.openSessionIds.includes(id)) return {};
-      const openSessionIds = [...s.openSessionIds, id];
+    localStorage.setItem(LAST_SESSION_KEY, id);
+    set(() => {
+      const openSessionIds = [id];
       saveOpenTabs(openSessionIds);
-      return { openSessionIds };
+      return { openSessionIds, currentSessionId: id };
     });
   },
 
   selectSession: (id: string) => {
     localStorage.setItem(LAST_SESSION_KEY, id);
-    set({ currentSessionId: id });
+    const openSessionIds = [id];
+    saveOpenTabs(openSessionIds);
+    set({ currentSessionId: id, openSessionIds });
   },
 
   updateSessionPreset: (id: string, presetId: string) => {
