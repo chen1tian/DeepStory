@@ -163,12 +163,10 @@ export default function MessageBubble({
             ) : (
               <div className="w-full">
                 {thinking && (
-                  <details
-                    className="thinking-block mb-2 bg-amber-500/5 border border-amber-500/20 rounded-lg overflow-hidden"
-                    open={isStreaming}
-                  >
+                  <details className="thinking-block mb-2 bg-amber-500/5 border border-amber-500/20 rounded-lg overflow-hidden">
                     <summary className="thinking-summary px-3 py-1.5 text-[11px] font-medium text-amber-400/80 cursor-pointer hover:text-amber-300 select-none flex items-center gap-1.5">
-                      <span className="text-[13px]">🧠</span> 思考过程
+                      <span className={`text-[13px] ${isStreaming ? "animate-pulse" : ""}`}>🧠</span>
+                      <span>思考过程</span>
                       <span className="text-[10px] text-amber-500/50 ml-auto">{isStreaming ? "思考中..." : "点击展开/收起"}</span>
                     </summary>
                     <div className="thinking-content px-3 pb-3 pt-1 text-[12px] text-amber-300/70 leading-relaxed whitespace-pre-wrap border-t border-amber-500/10">
@@ -186,11 +184,16 @@ export default function MessageBubble({
                       {cleanContent}
                     </ReactMarkdown>
                   </div>
-                ) : (
-                  isStreaming && thinking && (
-                    <div className="text-[13px] text-[var(--text-secondary)] animate-pulse">生成回复中...</div>
-                  )
-                )}
+                ) : isStreaming ? (
+                  <div className="flex items-center gap-2.5 py-1.5">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-amber-400/80 rounded-full thinking-dot" />
+                      <div className="w-2 h-2 bg-amber-400/80 rounded-full thinking-dot" />
+                      <div className="w-2 h-2 bg-amber-400/80 rounded-full thinking-dot" />
+                    </div>
+                    <span className="text-[13px] text-amber-400/60 font-medium animate-pulse">AI 思考中…</span>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

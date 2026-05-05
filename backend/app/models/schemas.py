@@ -656,8 +656,16 @@ class NarratorArc(BaseModel):
     evaluation_log: list[NarratorEvaluation] = Field(default_factory=list)  # last 10
     enabled: bool = True
     connection_id: str | None = None
+    archived_at: str | None = None
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class NarratorArcCollection(BaseModel):
+    """All narrator arcs for a session, split into current and archived history."""
+    session_id: str
+    current_arc: NarratorArc | None = None
+    archived_arcs: list[NarratorArc] = Field(default_factory=list)
 
 
 class CreateArcRequest(BaseModel):

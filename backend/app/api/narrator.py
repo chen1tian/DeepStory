@@ -13,14 +13,18 @@ from app.models.schemas import (
     GenerateNodesRequest,
     NarrativeDirective,
     NarratorArc,
+    NarratorArcCollection,
     StoryNode,
     UpdateArcRequest,
     UpdateNodeRequest,
 )
 from app.services.narrator_service import (
+    archive_current_arc,
     generate_nodes_with_ai,
     load_arc,
+    load_arc_collection,
     save_arc,
+    save_arc_collection,
     seed_initial_directives,
 )
 from app.storage.narrator_storage import delete_narrator
@@ -30,19 +34,17 @@ router = APIRouter(tags=["narrator"])
 
 
 def _arc_not_found(session_id: str):
-    raise HTTPException(status_code=404, detail=f"No narrator arc for session {session_id}")
+    raise HTTPException(status_code=404, detail=f"No active narrator arc for session {session_id}")
 
 
-@router.get("/narrator/{session_id}", response_model=NarratorArc)
+@router.get("/narrator/{session_id}", response_model=NarratorArcCollection)
 async def get_arc(session_id: str):
-    arc = await load_arc(session_id)
-    if arc is None:
-        raise HTTPException(status_code=404, detail="No narrator arc")
-    return arc
+    return await load_arc_collection(session_id)
 
 
-@router.post("/narrator/{session_id}", response_model=NarratorArc)
+@router.post("/narrator/{session_id}", response_model=NarratorArcCollection)
 async def create_arc(session_id: str, body: CreateArcRequest):
+    collection = await archive_current_arc(session_id)
     arc = NarratorArc(
         id=str(uuid.uuid4()),
         session_id=session_id,
@@ -58,12 +60,13 @@ async def create_arc(session_id: str, body: CreateArcRequest):
             for n in body.nodes
         ] if body.nodes else [],
     )
-    await save_arc(arc)
+    collection.current_arc = arc
+    await save_arc_collection(collection)
     await seed_initial_directives(session_id)
-    return arc
+    return await load_arc_collection(session_id)
 
 
-@router.put("/narrator/{session_id}", response_model=NarratorArc)
+@router.put("/narrator/{session_id}", response_model=NarratorArcCollection)
 async def update_arc(session_id: str, body: UpdateArcRequest):
     arc = await load_arc(session_id)
     if arc is None:
@@ -75,16 +78,26 @@ async def update_arc(session_id: str, body: UpdateArcRequest):
     arc.updated_at = datetime.now().isoformat()
 
     await save_arc(arc)
-    return arc
+    return await load_arc_collection(session_id)
 
 
 @router.delete("/narrator/{session_id}")
 async def delete_arc(session_id: str):
-    deleted = await delete_narrator(session_id)
-    return {"status": "deleted" if deleted else "not_found"}
+    collection = await load_arc_collection(session_id)
+    if collection.current_arc is None:
+        return {"status": "not_found"}
+
+    collection.current_arc = None
+    await save_arc_collection(collection)
+
+    if not collection.archived_arcs:
+        deleted = await delete_narrator(session_id)
+        return {"status": "deleted" if deleted else "not_found"}
+
+    return {"status": "deleted"}
 
 
-@router.post("/narrator/{session_id}/toggle", response_model=NarratorArc)
+@router.post("/narrator/{session_id}/toggle", response_model=NarratorArcCollection)
 async def toggle_arc(session_id: str):
     arc = await load_arc(session_id)
     if arc is None:
@@ -95,7 +108,7 @@ async def toggle_arc(session_id: str):
     await save_arc(arc)
     if arc.enabled:
         await seed_initial_directives(session_id)
-    return arc
+    return await load_arc_collection(session_id)
 
 
 # ── Node management ──

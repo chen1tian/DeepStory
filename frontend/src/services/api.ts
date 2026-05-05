@@ -35,6 +35,7 @@ import type {
   CreateHookRequest,
   UpdateHookRequest,
   NarratorArc,
+  NarratorArcCollection,
   CreateArcRequest,
   UpdateArcRequest,
   CreateNodeRequest,
@@ -408,16 +409,16 @@ export const generateMap = (sessionId: string, data: GenerateMapRequest) =>
 
 // Narrator (故事导演)
 export const getArc = (sessionId: string) =>
-  request<NarratorArc>(`/narrator/${sessionId}`);
+  request<NarratorArcCollection>(`/narrator/${sessionId}`);
 
 export const createArc = (sessionId: string, data: CreateArcRequest = {}) =>
-  request<NarratorArc>(`/narrator/${sessionId}`, {
+  request<NarratorArcCollection>(`/narrator/${sessionId}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
 
 export const updateArc = (sessionId: string, data: UpdateArcRequest) =>
-  request<NarratorArc>(`/narrator/${sessionId}`, {
+  request<NarratorArcCollection>(`/narrator/${sessionId}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
@@ -426,7 +427,7 @@ export const deleteArc = (sessionId: string) =>
   request<{ status: string }>(`/narrator/${sessionId}`, { method: "DELETE" });
 
 export const toggleArc = (sessionId: string) =>
-  request<NarratorArc>(`/narrator/${sessionId}/toggle`, { method: "POST" });
+  request<NarratorArcCollection>(`/narrator/${sessionId}/toggle`, { method: "POST" });
 
 export const addNode = (sessionId: string, data: CreateNodeRequest) =>
   request<StoryNode>(`/narrator/${sessionId}/nodes`, {

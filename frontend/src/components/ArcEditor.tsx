@@ -6,6 +6,7 @@ import { randomId } from "../utils/randomId";
 
 interface Props {
   sessionId: string;
+  mode?: "edit" | "create";
   onClose: () => void;
 }
 
@@ -98,7 +99,7 @@ function NodeRow({
   );
 }
 
-export default function ArcEditor({ sessionId, onClose }: Props) {
+export default function ArcEditor({ sessionId, mode = "edit", onClose }: Props) {
   const arc = useNarratorStore((s) => s.arc);
   const createArc = useNarratorStore((s) => s.createArc);
   const updateArc = useNarratorStore((s) => s.updateArc);
@@ -106,14 +107,15 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
   const generateNodes = useNarratorStore((s) => s.generateNodes);
   const isGenerating = useNarratorStore((s) => s.isGenerating);
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId);
+  const editingArc = mode === "edit" ? arc : null;
 
   // Form state
-  const [title, setTitle] = useState(arc?.title || "未命名弧线");
-  const [goal, setGoal] = useState(arc?.goal || "");
-  const [themes, setThemes] = useState((arc?.themes || []).join("、"));
-  const [tone, setTone] = useState(arc?.tone || "");
-  const [pacingNotes, setPacingNotes] = useState(arc?.pacing_notes || "");
-  const [localNodes, setLocalNodes] = useState<StoryNode[]>(arc?.nodes || []);
+  const [title, setTitle] = useState(editingArc?.title || "未命名弧线");
+  const [goal, setGoal] = useState(editingArc?.goal || "");
+  const [themes, setThemes] = useState((editingArc?.themes || []).join("、"));
+  const [tone, setTone] = useState(editingArc?.tone || "");
+  const [pacingNotes, setPacingNotes] = useState(editingArc?.pacing_notes || "");
+  const [localNodes, setLocalNodes] = useState<StoryNode[]>(editingArc?.nodes || []);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -124,31 +126,39 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
   const [generateContext, setGenerateContext] = useState("");
 
   useEffect(() => {
-    if (arc) {
-      setTitle(arc.title);
-      setGoal(arc.goal);
-      setThemes(arc.themes.join("、"));
-      setTone(arc.tone);
-      setPacingNotes(arc.pacing_notes);
-      setLocalNodes(arc.nodes);
+    if (editingArc) {
+      setTitle(editingArc.title);
+      setGoal(editingArc.goal);
+      setThemes(editingArc.themes.join("、"));
+      setTone(editingArc.tone);
+      setPacingNotes(editingArc.pacing_notes);
+      setLocalNodes(editingArc.nodes);
+      return;
     }
-  }, [arc]);
+
+    setTitle("未命名弧线");
+    setGoal("");
+    setThemes("");
+    setTone("");
+    setPacingNotes("");
+    setLocalNodes([]);
+  }, [editingArc, mode]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const themeList = themes.split(/[、,，]/).map((t) => t.trim()).filter(Boolean);
-      if (arc) {
+      if (editingArc) {
         const updates: UpdateArcRequest = { title, goal, themes: themeList, tone, pacing_notes: pacingNotes };
         await updateArc(sessionId, updates);
         // Sync node changes
-        const addedNodes = localNodes.filter((n) => !arc.nodes.find((an) => an.id === n.id));
+        const addedNodes = localNodes.filter((n) => !editingArc.nodes.find((an) => an.id === n.id));
         const { addNode, updateNode, removeNode } = useNarratorStore.getState();
-        for (const removed of arc.nodes.filter((an) => !localNodes.find((n) => n.id === an.id))) {
+        for (const removed of editingArc.nodes.filter((an) => !localNodes.find((n) => n.id === an.id))) {
           await removeNode(sessionId, removed.id);
         }
         for (const node of localNodes) {
-          const orig = arc.nodes.find((n) => n.id === node.id);
+          const orig = editingArc.nodes.find((n) => n.id === node.id);
           if (addedNodes.includes(node)) {
             await addNode(sessionId, node);
           } else if (orig && JSON.stringify(orig) !== JSON.stringify(node)) {
@@ -175,6 +185,7 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
   };
 
   const handleDelete = async () => {
+    if (!editingArc) return;
     if (!confirm("确定要删除故事弧线吗？所有节点和指令都会被删除。")) return;
     setDeleting(true);
     await deleteArc(sessionId);
@@ -231,7 +242,7 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
           <div className="flex items-center gap-2">
             <span className="text-lg">🎬</span>
             <span className="font-semibold text-[var(--text-primary)]">
-              {arc ? "编辑故事弧线" : "创建故事弧线"}
+              {editingArc ? "编辑故事弧线" : "创建故事弧线"}
             </span>
           </div>
           <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xl p-1 transition-colors">×</button>
@@ -239,6 +250,12 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {!editingArc && arc && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200/90">
+              创建新弧线后，当前弧线会自动归档到历史记录中。
+            </div>
+          )}
+
           {/* Basic info */}
           <div className="space-y-3">
             <div>
@@ -373,7 +390,7 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
 
         {/* Footer */}
         <div className="p-4 border-t border-[var(--border)] flex items-center gap-3 shrink-0">
-          {arc && (
+          {editingArc && (
             <button
               onClick={handleDelete}
               disabled={deleting}
@@ -394,7 +411,7 @@ export default function ArcEditor({ sessionId, onClose }: Props) {
             disabled={saving || !goal.trim()}
             className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-medium disabled:opacity-50 hover:opacity-90 transition-all"
           >
-            {saving ? "保存中..." : arc ? "保存更改" : "创建弧线"}
+            {saving ? "保存中..." : editingArc ? "保存更改" : "创建并切换"}
           </button>
         </div>
       </div>

@@ -98,6 +98,17 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
           />
         )}
 
+        {isStreaming && !streamingContent && !streamingThinking && (
+          <div className="flex items-center justify-center gap-2.5 py-4">
+            <div className="flex gap-1">
+              <div className="w-2.5 h-2.5 bg-indigo-400/60 rounded-full thinking-dot" />
+              <div className="w-2.5 h-2.5 bg-indigo-400/60 rounded-full thinking-dot" />
+              <div className="w-2.5 h-2.5 bg-indigo-400/60 rounded-full thinking-dot" />
+            </div>
+            <span className="text-[14px] text-indigo-400/50 font-medium animate-pulse">正在思考…</span>
+          </div>
+        )}
+
         {summaryStatus && (
           <div className="flex w-full justify-center">
             <div className="bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full text-xs font-medium animate-pulse ring-1 ring-inset ring-blue-500/20 backdrop-blur-sm shadow-sm">

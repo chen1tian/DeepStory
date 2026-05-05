@@ -14,6 +14,7 @@ from app.models.schemas import (
     Message,
     NarrativeDirective,
     NarratorArc,
+    NarratorArcCollection,
     NarratorEvaluation,
     StateData,
     StoryNode,
@@ -63,11 +64,48 @@ async def load_arc(session_id: str) -> NarratorArc | None:
     data = await load_narrator(session_id)
     if data is None:
         return None
+    if "current_arc" in data or "archived_arcs" in data:
+        collection = NarratorArcCollection(**data)
+        return collection.current_arc
     return NarratorArc(**data)
 
 
+async def load_arc_collection(session_id: str) -> NarratorArcCollection:
+    data = await load_narrator(session_id)
+    if data is None:
+        return NarratorArcCollection(session_id=session_id)
+    if "current_arc" in data or "archived_arcs" in data:
+        return NarratorArcCollection(**data)
+
+    # Backward compatibility: old narrator.json stored a single arc directly.
+    legacy_arc = NarratorArc(**data)
+    return NarratorArcCollection(session_id=session_id, current_arc=legacy_arc)
+
+
 async def save_arc(arc: NarratorArc) -> None:
-    await save_narrator(arc.session_id, arc.model_dump())
+    collection = await load_arc_collection(arc.session_id)
+    collection.current_arc = arc
+    await save_narrator(arc.session_id, collection.model_dump())
+
+
+async def save_arc_collection(collection: NarratorArcCollection) -> None:
+    await save_narrator(collection.session_id, collection.model_dump())
+
+
+async def archive_current_arc(session_id: str) -> NarratorArcCollection:
+    collection = await load_arc_collection(session_id)
+    if collection.current_arc is None:
+        return collection
+
+    archived_arc = collection.current_arc.model_copy(update={
+        "enabled": False,
+        "archived_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+    })
+    collection.archived_arcs = [archived_arc, *collection.archived_arcs]
+    collection.current_arc = None
+    await save_arc_collection(collection)
+    return collection
 
 
 def get_active_directives(arc: NarratorArc) -> list[NarrativeDirective]:

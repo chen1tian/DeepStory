@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   NarratorArc,
+  NarratorArcCollection,
   NarrativeDirective,
   StoryNode,
   NarratorEvaluation,
@@ -16,6 +17,7 @@ import * as api from "../services/api";
 
 interface NarratorState {
   arc: NarratorArc | null;
+  archivedArcs: NarratorArc[];
   lastUpdate: NarratorUpdatePayload | null;
   isGenerating: boolean;
   error: string | null;
@@ -41,25 +43,34 @@ interface NarratorState {
   clearError: () => void;
 }
 
+function applyArcCollection(collection: NarratorArcCollection) {
+  return {
+    arc: collection.current_arc,
+    archivedArcs: collection.archived_arcs,
+    error: null,
+  };
+}
+
 export const useNarratorStore = create<NarratorState>((set, get) => ({
   arc: null,
+  archivedArcs: [],
   lastUpdate: null,
   isGenerating: false,
   error: null,
 
   loadArc: async (sessionId) => {
     try {
-      const arc = await api.getArc(sessionId);
-      set({ arc });
+      const collection = await api.getArc(sessionId);
+      set(applyArcCollection(collection));
     } catch {
-      set({ arc: null });
+      set({ arc: null, archivedArcs: [] });
     }
   },
 
   createArc: async (sessionId, data) => {
     try {
-      const arc = await api.createArc(sessionId, data);
-      set({ arc });
+      const collection = await api.createArc(sessionId, data);
+      set(applyArcCollection(collection));
     } catch (e: unknown) {
       set({ error: e instanceof Error ? e.message : String(e) });
       throw e;
@@ -68,8 +79,8 @@ export const useNarratorStore = create<NarratorState>((set, get) => ({
 
   updateArc: async (sessionId, data) => {
     try {
-      const arc = await api.updateArc(sessionId, data);
-      set({ arc });
+      const collection = await api.updateArc(sessionId, data);
+      set(applyArcCollection(collection));
     } catch (e: unknown) {
       set({ error: e instanceof Error ? e.message : String(e) });
       throw e;
@@ -78,12 +89,12 @@ export const useNarratorStore = create<NarratorState>((set, get) => ({
 
   deleteArc: async (sessionId) => {
     await api.deleteArc(sessionId);
-    set({ arc: null, lastUpdate: null });
+    set((s) => ({ arc: null, archivedArcs: s.archivedArcs, lastUpdate: null }));
   },
 
   toggleEnabled: async (sessionId) => {
-    const arc = await api.toggleArc(sessionId);
-    set({ arc });
+    const collection = await api.toggleArc(sessionId);
+    set(applyArcCollection(collection));
   },
 
   addNode: async (sessionId, data) => {

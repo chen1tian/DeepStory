@@ -737,8 +737,15 @@ export interface NarratorArc {
   evaluation_log: NarratorEvaluation[];
   enabled: boolean;
   connection_id: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface NarratorArcCollection {
+  session_id: string;
+  current_arc: NarratorArc | null;
+  archived_arcs: NarratorArc[];
 }
 
 export interface CreateArcRequest {

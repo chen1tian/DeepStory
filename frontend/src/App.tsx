@@ -157,6 +157,7 @@ function MainApp() {
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showHookManager, setShowHookManager] = useState(false);
   const [showArcEditor, setShowArcEditor] = useState(false);
+  const [arcEditorMode, setArcEditorMode] = useState<"edit" | "create">("edit");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showJoinRoom, setShowJoinRoom] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<"state" | "narrator">("state");
@@ -261,7 +262,7 @@ function MainApp() {
         <HookManager onClose={() => setShowHookManager(false)} />
       )}
       {showArcEditor && currentSessionId && (
-        <ArcEditor sessionId={currentSessionId} onClose={() => setShowArcEditor(false)} />
+        <ArcEditor sessionId={currentSessionId} mode={arcEditorMode} onClose={() => setShowArcEditor(false)} />
       )}
       {showCreateRoom && currentSessionId && (
         <CreateRoomModal sessionId={currentSessionId} onClose={() => setShowCreateRoom(false)} />
@@ -446,7 +447,7 @@ function MainApp() {
                   currentSessionId ? (
                     <NarratorPanel
                       sessionId={currentSessionId}
-                      onOpenEditor={() => { setShowArcEditor(true); setImmersivePanel(null); }}
+                      onOpenEditor={(mode = "edit") => { setArcEditorMode(mode); setShowArcEditor(true); setImmersivePanel(null); }}
                     />
                   ) : (
                     <div className="p-4 text-sm text-[var(--text-secondary)]">请先选择一个会话。</div>
@@ -666,7 +667,7 @@ function MainApp() {
                 ) : currentSessionId ? (
                   <NarratorPanel
                     sessionId={currentSessionId}
-                    onOpenEditor={() => setShowArcEditor(true)}
+                    onOpenEditor={(mode = "edit") => { setArcEditorMode(mode); setShowArcEditor(true); }}
                   />
                 ) : null}
               </div>

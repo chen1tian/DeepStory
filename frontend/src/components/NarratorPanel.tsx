@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNarratorStore } from "../stores/narratorStore";
 import type {
+  NarratorArc,
   StoryNode,
   NarrativeDirective,
   StoryNodeStatus,
@@ -10,7 +11,7 @@ import type {
 
 interface Props {
   sessionId: string;
-  onOpenEditor: () => void;
+  onOpenEditor: (mode?: "edit" | "create") => void;
 }
 
 const STATUS_COLORS: Record<StoryNodeStatus, string> = {
@@ -173,6 +174,65 @@ function DirectiveCard({
   );
 }
 
+function ArchiveCard({ arc }: { arc: NarratorArc }) {
+  const completedNodes = arc.nodes.filter((node) => node.status === "completed").length;
+  const skippedNodes = arc.nodes.filter((node) => node.status === "skipped").length;
+  const archivedLabel = arc.archived_at
+    ? new Date(arc.archived_at).toLocaleString("zh-CN")
+    : new Date(arc.updated_at).toLocaleString("zh-CN");
+
+  return (
+    <details className="rounded-lg border border-white/8 bg-white/3 overflow-hidden group">
+      <summary className="list-none cursor-pointer p-3 flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[12px] font-medium text-[var(--text-primary)] truncate">{arc.title}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[var(--text-secondary)]">
+              已归档
+            </span>
+          </div>
+          <p className="text-[11px] text-[var(--text-secondary)] mt-1 line-clamp-2">{arc.goal || "未填写故事目标"}</p>
+          <div className="mt-2 flex items-center gap-2 flex-wrap text-[10px] text-[var(--text-secondary)]">
+            <span>归档于 {archivedLabel}</span>
+            <span>节点 {arc.nodes.length}</span>
+            <span>完成 {completedNodes}</span>
+            {skippedNodes > 0 && <span>跳过 {skippedNodes}</span>}
+          </div>
+        </div>
+        <span className="text-[var(--text-secondary)] text-xs transition-transform group-open:rotate-180">▼</span>
+      </summary>
+
+      <div className="px-3 pb-3 border-t border-white/8 space-y-2">
+        {arc.themes.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-2">
+            {arc.themes.map((theme) => (
+              <span key={theme} className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[var(--text-secondary)]">
+                {theme}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {arc.nodes.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            {arc.nodes
+              .slice()
+              .sort((a, b) => a.order - b.order)
+              .map((node) => (
+                <div key={node.id} className="flex items-center gap-2 rounded-md bg-black/10 px-2 py-1.5">
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STATUS_COLORS[node.status]}`}>
+                    {STATUS_LABELS[node.status]}
+                  </span>
+                  <span className="text-[11px] text-[var(--text-primary)] truncate">{node.title}</span>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
 function AddDirectiveForm({ sessionId }: { sessionId: string }) {
   const addDirective = useNarratorStore((s) => s.addDirective);
   const [open, setOpen] = useState(false);
@@ -285,24 +345,41 @@ function AddDirectiveForm({ sessionId }: { sessionId: string }) {
 
 export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
   const arc = useNarratorStore((s) => s.arc);
+  const archivedArcs = useNarratorStore((s) => s.archivedArcs);
   const lastUpdate = useNarratorStore((s) => s.lastUpdate);
   const toggleEnabled = useNarratorStore((s) => s.toggleEnabled);
   const updateNode = useNarratorStore((s) => s.updateNode);
-  const [activeTab, setActiveTab] = useState<"nodes" | "directives" | "log">("nodes");
+  const [activeTab, setActiveTab] = useState<"nodes" | "directives" | "log" | "archive">("nodes");
 
   if (!arc) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-6 gap-3">
-        <div className="text-3xl">🎬</div>
-        <p className="text-[13px] text-[var(--text-secondary)] text-center">
-          还没有故事弧线，点击下方按钮创建一个，开始引导故事发展。
-        </p>
-        <button
-          onClick={onOpenEditor}
-          className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-medium transition-all hover:opacity-90"
-        >
-          🎬 创建故事弧线
-        </button>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="p-6 flex flex-col items-center justify-center gap-3 border-b border-[var(--border)]">
+          <div className="text-3xl">🎬</div>
+          <p className="text-[13px] text-[var(--text-secondary)] text-center">
+            当前没有进行中的故事弧线。你可以开始新的弧线，已完成的弧线会保留在归档中。
+          </p>
+          <button
+            onClick={() => onOpenEditor("create")}
+            className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg text-[13px] font-medium transition-all hover:opacity-90"
+          >
+            🎬 开启新弧线
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider">归档</span>
+            <span className="text-[10px] text-[var(--text-secondary)]">{archivedArcs.length} 条</span>
+          </div>
+          {archivedArcs.length === 0 ? (
+            <p className="text-[12px] text-[var(--text-secondary)] text-center py-4 border border-dashed border-white/10 rounded-lg">
+              还没有归档的故事弧线。
+            </p>
+          ) : (
+            archivedArcs.map((archivedArc) => <ArchiveCard key={archivedArc.id} arc={archivedArc} />)
+          )}
+        </div>
       </div>
     );
   }
@@ -314,6 +391,7 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
   const activeDirectives = arc.active_directives.filter(
     (d) => d.turns_remaining === null || d.turns_remaining > 0
   );
+  const isArcComplete = arc.nodes.length > 0 && arc.nodes.every((node) => node.status === "completed" || node.status === "skipped");
 
   return (
     <div className="flex flex-col h-full overflow-hidden text-[13px]">
@@ -337,6 +415,13 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
           </div>
           <div className="flex gap-1 shrink-0 ml-2">
             <button
+              onClick={() => onOpenEditor("create")}
+              className="text-[11px] px-2 py-1 rounded border border-white/10 hover:border-white/25 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+              title="开始下一条弧线"
+            >
+              +
+            </button>
+            <button
               onClick={() => toggleEnabled(sessionId)}
               className="text-[11px] px-2 py-1 rounded border border-white/10 hover:border-white/25 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
               title={arc.enabled ? "暂停导演" : "启用导演"}
@@ -344,7 +429,7 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
               {arc.enabled ? "⏸" : "▶"}
             </button>
             <button
-              onClick={onOpenEditor}
+              onClick={() => onOpenEditor("edit")}
               className="text-[11px] px-2 py-1 rounded border border-white/10 hover:border-white/25 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
               title="编辑弧线"
             >
@@ -354,6 +439,20 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
         </div>
 
         <TensionBar level={arc.tension_level} />
+
+        {isArcComplete && (
+          <div className="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-2 flex items-center gap-2">
+            <div className="text-[11px] text-emerald-200/90 flex-1">
+              当前弧线的节点已经全部完成，可以开启下一条故事弧线，当前这条会自动归档。
+            </div>
+            <button
+              onClick={() => onOpenEditor("create")}
+              className="text-[11px] px-2 py-1 rounded bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 transition-colors"
+            >
+              新建下一条
+            </button>
+          </div>
+        )}
 
         {arc.themes.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -374,7 +473,7 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
 
       {/* Tabs */}
       <div className="flex border-b border-[var(--border)] shrink-0">
-        {(["nodes", "directives", "log"] as const).map((tab) => (
+        {(["nodes", "directives", "log", "archive"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -388,7 +487,9 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
               ? `节点 (${arc.nodes.length})`
               : tab === "directives"
               ? `指令 (${activeDirectives.length})`
-              : "日志"}
+              : tab === "log"
+              ? "日志"
+              : `归档 (${archivedArcs.length})`}
           </button>
         ))}
       </div>
@@ -412,7 +513,7 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
               ))
             )}
             <button
-              onClick={onOpenEditor}
+              onClick={() => onOpenEditor("edit")}
               className="w-full text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-dashed border-white/15 hover:border-white/30 rounded-lg py-1.5 transition-all mt-1"
             >
               + 管理节点
@@ -471,6 +572,18 @@ export default function NarratorPanel({ sessionId, onOpenEditor }: Props) {
                   )}
                 </div>
               ))
+            )}
+          </>
+        )}
+
+        {activeTab === "archive" && (
+          <>
+            {archivedArcs.length === 0 ? (
+              <p className="text-[12px] text-[var(--text-secondary)] text-center py-4">
+                还没有归档的故事弧线。
+              </p>
+            ) : (
+              archivedArcs.map((archivedArc) => <ArchiveCard key={archivedArc.id} arc={archivedArc} />)
             )}
           </>
         )}
