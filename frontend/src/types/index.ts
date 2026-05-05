@@ -475,7 +475,7 @@ export interface Story {
   description: string;
   background: string;
   openers: StoryOpener[];
-  preset_characters: CharacterInfo[];
+  preset_characters: string[];
   color: string;
   protagonist_id?: string;
   cast_ids: string[];
@@ -488,7 +488,7 @@ export interface CreateStoryRequest {
   description?: string;
   background?: string;
   openers?: StoryOpener[];
-  preset_characters?: CharacterInfo[];
+  preset_characters?: string[];
   color?: string;
   cast_ids?: string[];
 }
@@ -498,7 +498,7 @@ export interface UpdateStoryRequest {
   description?: string;
   background?: string;
   openers?: StoryOpener[];
-  preset_characters?: CharacterInfo[];
+  preset_characters?: string[];
   color?: string;
   protagonist_id?: string;
   cast_ids?: string[];

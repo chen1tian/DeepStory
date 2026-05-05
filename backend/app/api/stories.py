@@ -32,6 +32,7 @@ async def create_story(req: CreateStoryRequest):
         openers=req.openers,
         preset_characters=req.preset_characters,
         color=req.color,
+        cast_ids=req.cast_ids,
         created_at=now,
         updated_at=now,
     )
@@ -62,8 +63,6 @@ async def update_story(story_id: str, req: UpdateStoryRequest):
     # Convert nested pydantic models to dicts
     if "openers" in updates:
         updates["openers"] = [o.model_dump() if hasattr(o, "model_dump") else o for o in updates["openers"]]
-    if "preset_characters" in updates:
-        updates["preset_characters"] = [c.model_dump() if hasattr(c, "model_dump") else c for c in updates["preset_characters"]]
 
     data.update(updates)
     data["updated_at"] = datetime.now().isoformat()

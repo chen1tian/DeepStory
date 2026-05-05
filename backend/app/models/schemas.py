@@ -6,6 +6,22 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+def _coerce_story_character_refs(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+
+    refs: list[str] = []
+    for item in value:
+        if isinstance(item, str) and item:
+            refs.append(item)
+            continue
+        if isinstance(item, dict):
+            item_id = item.get("id")
+            if isinstance(item_id, str) and item_id:
+                refs.append(item_id)
+    return refs
+
+
 class Message(BaseModel):
     id: str
     parent_id: str | None = None
@@ -294,12 +310,17 @@ class Story(BaseModel):
     description: str = ""  # brief summary shown in card
     background: str = ""  # detailed setting injected as system prompt
     openers: list[StoryOpener] = Field(default_factory=list)
-    preset_characters: list[CharacterInfo] = Field(default_factory=list)
+    preset_characters: list[str] = Field(default_factory=list)
     color: str = "#6366f1"  # tag / card accent color
     protagonist_id: str | None = None  # bound protagonist
     cast_ids: list[str] = Field(default_factory=list)  # IDs of protagonists in the cast
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+    @field_validator("preset_characters", mode="before")
+    @classmethod
+    def coerce_preset_characters(cls, value: Any):
+        return _coerce_story_character_refs(value)
 
 
 class CreateStoryRequest(BaseModel):
@@ -307,9 +328,14 @@ class CreateStoryRequest(BaseModel):
     description: str = ""
     background: str = ""
     openers: list[StoryOpener] = Field(default_factory=list)
-    preset_characters: list[CharacterInfo] = Field(default_factory=list)
+    preset_characters: list[str] = Field(default_factory=list)
     color: str = "#6366f1"
     cast_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("preset_characters", mode="before")
+    @classmethod
+    def coerce_preset_characters(cls, value: Any):
+        return _coerce_story_character_refs(value)
 
 
 class UpdateStoryRequest(BaseModel):
@@ -317,10 +343,17 @@ class UpdateStoryRequest(BaseModel):
     description: str | None = None
     background: str | None = None
     openers: list[StoryOpener] | None = None
-    preset_characters: list[CharacterInfo] | None = None
+    preset_characters: list[str] | None = None
     color: str | None = None
     protagonist_id: str | None = None
     cast_ids: list[str] | None = None
+
+    @field_validator("preset_characters", mode="before")
+    @classmethod
+    def coerce_preset_characters(cls, value: Any):
+        if value is None:
+            return None
+        return _coerce_story_character_refs(value)
 
 
 # --- User Protagonist schemas (用户化身) ---

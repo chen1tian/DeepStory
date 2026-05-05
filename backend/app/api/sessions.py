@@ -73,6 +73,30 @@ async def create_session(req: CreateSessionRequest):
             if not req.user_protagonist_id and story_data.get("protagonist_id"):
                 req.user_protagonist_id = story_data["protagonist_id"]
 
+            preset_character_lines: list[str] = []
+            for character_id in story_data.get("preset_characters", []):
+                if not isinstance(character_id, str) or not character_id:
+                    continue
+                protagonist = await load_protagonist(character_id)
+                if not protagonist:
+                    continue
+                line = f"- {protagonist.get('name', '未命名角色')}"
+                setting = protagonist.get("setting", "")
+                if setting:
+                    line += f": {setting}"
+                preset_character_lines.append(line)
+
+            if preset_character_lines:
+                preset_character_block = (
+                    "【预设角色】以下角色引用自角色池，请沿用其设定与身份信息：\n"
+                    + "\n".join(preset_character_lines)
+                )
+                system_prompt = (
+                    f"{system_prompt}\n\n{preset_character_block}"
+                    if system_prompt
+                    else preset_character_block
+                )
+
     # Resolve the user protagonist for this session
     user_protagonist_id: str | None = None
     if req.user_protagonist_id:
