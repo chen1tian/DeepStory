@@ -9,9 +9,19 @@ import { useRoomStore } from "../stores/roomStore";
 interface Props {
   onDelete: (messageId: string) => void;
   onResend: (messageId: string) => void;
+  showPendingTurns?: boolean;
 }
 
-export default function MessageList({ onDelete, onResend }: Props) {
+const PLAYER_COLORS = [
+  "border-indigo-500/40 bg-indigo-500/10 text-indigo-300",
+  "border-violet-500/40 bg-violet-500/10 text-violet-300",
+  "border-sky-500/40 bg-sky-500/10 text-sky-300",
+  "border-teal-500/40 bg-teal-500/10 text-teal-300",
+  "border-rose-500/40 bg-rose-500/10 text-rose-300",
+  "border-amber-500/40 bg-amber-500/10 text-amber-300",
+];
+
+export default function MessageList({ onDelete, onResend, showPendingTurns = false }: Props) {
   const messages = useChatStore((s) => s.messages);
   const streamingContent = useChatStore((s) => s.streamingContent);
   const streamingThinking = useChatStore((s) => s.streamingThinking);
@@ -22,7 +32,9 @@ export default function MessageList({ onDelete, onResend }: Props) {
   const sessions = useSessionStore((s) => s.sessions);
   const userProtagonists = useUserProtagonistStore((s) => s.userProtagonists);
   const maxMessageCount = useUIStore((s) => s.maxMessageCount);
-  const roomPlayers = useRoomStore((s) => s.roomState?.players ?? []);
+  const roomState = useRoomStore((s) => s.roomState);
+  const isProcessing = useRoomStore((s) => s.isProcessing);
+  const roomPlayers = roomState?.players ?? [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -54,6 +66,8 @@ export default function MessageList({ onDelete, onResend }: Props) {
   const protagonist = session?.user_protagonist_id
     ? userProtagonists.find((p) => p.id === session.user_protagonist_id)
     : null;
+  const pendingEntries = roomState ? Object.entries(roomState.pending_turns) : [];
+  const hasPendingTurns = showPendingTurns && (pendingEntries.length > 0 || isProcessing);
 
   const pendingDeleteDisplayIdx = pendingDeleteId
     ? displayMessages.findIndex((m) => m.id === pendingDeleteId)
@@ -72,7 +86,7 @@ export default function MessageList({ onDelete, onResend }: Props) {
   useEffect(() => {
     if (!autoScrollEnabled) return;
     bottomRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
-  }, [autoScrollEnabled, messages, streamingContent, streamingThinking, isStreaming]);
+  }, [autoScrollEnabled, messages, streamingContent, streamingThinking, isStreaming, pendingEntries.length, isProcessing]);
 
   const handleScroll = () => {
     setAutoScrollEnabled(isNearBottom());
@@ -108,6 +122,43 @@ export default function MessageList({ onDelete, onResend }: Props) {
             protagonistAvatarEmoji={protagonist?.avatar_emoji ?? "🧑"}
           />
         ))}
+
+        {hasPendingTurns && (
+          <div className="flex flex-col gap-2">
+            <div className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wider mb-0.5">
+              {isProcessing ? "DM 正在处理..." : "本轮行动预览"}
+            </div>
+            {pendingEntries.map(([userId, content], i) => {
+              const player = roomPlayers.find((entry) => entry.user_id === userId);
+              if (!player || !content) return null;
+              const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
+              return (
+                <div
+                  key={userId}
+                  className={`flex items-end gap-2 justify-end animate-in fade-in slide-in-from-bottom-1 duration-200 ${isProcessing ? "opacity-60" : ""}`}
+                >
+                  <div className="flex flex-col items-end">
+                    <span className="text-[11px] text-[var(--text-secondary)] mb-0.5 mr-1">
+                      {player.protagonist_name || player.username}
+                    </span>
+                    <div
+                      className={`max-w-[80%] px-3 py-2 rounded-xl rounded-tr-sm text-[14px] leading-relaxed whitespace-pre-wrap border ${color}`}
+                    >
+                      {content}
+                    </div>
+                  </div>
+                  {player.protagonist_avatar_url ? (
+                    <img src={player.protagonist_avatar_url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0 mb-0.5 ring-1 ring-inset ring-white/10" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 mb-0.5 ring-1 ring-inset ring-white/10">
+                      <span className="text-3xl">{player.protagonist_avatar || "🧑"}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {isStreaming && (streamingContent || streamingThinking) && (
           <MessageBubble
