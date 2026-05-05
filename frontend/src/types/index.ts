@@ -396,6 +396,7 @@ export interface Connection {
   api_key: string;
   api_base_url: string;
   model_name: string;
+  temperature: number;
   is_default: boolean;
   image_gen_config: ImageGenConfig | null;
   created_at: string;
@@ -408,6 +409,7 @@ export interface CreateConnectionRequest {
   api_key?: string;
   api_base_url?: string;
   model_name?: string;
+  temperature?: number;
   is_default?: boolean;
   image_gen_config?: ImageGenConfig | null;
 }
@@ -418,6 +420,7 @@ export interface UpdateConnectionRequest {
   api_key?: string;
   api_base_url?: string;
   model_name?: string;
+  temperature?: number;
   is_default?: boolean;
   image_gen_config?: ImageGenConfig | null;
 }

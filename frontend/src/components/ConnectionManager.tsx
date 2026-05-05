@@ -37,6 +37,7 @@ export default function ConnectionManager({ onClose }: { onClose: () => void }) 
       api_key: "",
       api_base_url: "https://api.openai.com/v1",
       model_name: "gpt-4o-mini",
+      temperature: 0.7,
     });
     setEditingId(c.id);
   };
@@ -148,6 +149,7 @@ interface LLMFormData {
   api_key: string;
   api_base_url: string;
   model_name: string;
+  temperature: number;
   is_default: boolean;
 }
 
@@ -180,6 +182,7 @@ function ConnectionForm({
       api_key: connection.api_key,
       api_base_url: connection.api_base_url,
       model_name: connection.model_name,
+      temperature: connection.temperature,
       is_default: connection.is_default,
     };
     if (isImageGen) {
@@ -378,6 +381,23 @@ function ConnectionForm({
           <div className="text-[12px] text-green-400">已加载 {modelList.length} 个模型，可从下拉列表选择或手动输入</div>
         )}
       </div>
+
+      {form.connection_type === "llm" && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[13px] font-medium text-[var(--text-secondary)]">温度</label>
+          <input
+            type="number"
+            min={0}
+            max={2}
+            step={0.1}
+            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-sm font-[inherit] outline-none focus:border-indigo-500/60 transition-colors w-full"
+            value={form.temperature}
+            onChange={(e) => update("temperature", Math.max(0, Math.min(2, Number(e.target.value) || 0)))}
+            placeholder="0.7"
+          />
+          <div className="text-[12px] text-[var(--text-secondary)]">范围 0 到 2，数值越高随机性越强。</div>
+        </div>
+      )}
 
       {/* Image gen specific fields */}
       {form.connection_type === "image_generation" && "image_gen_config" in form && (

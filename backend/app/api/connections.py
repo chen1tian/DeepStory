@@ -41,6 +41,7 @@ async def create_connection(req: CreateConnectionRequest):
         api_key=req.api_key,
         api_base_url=req.api_base_url,
         model_name=req.model_name,
+        temperature=req.temperature,
         is_default=req.is_default,
         image_gen_config=req.image_gen_config,
         created_at=now,

@@ -13,8 +13,8 @@ log = structlog.get_logger()
 async def resolve_connection_params(
     connection_id: str | None = None,
     connection_type: str = "llm",
-) -> tuple[str, str, str]:
-    """Resolve (api_key, base_url, model_name) from a stored connection or env defaults.
+) -> tuple[str, str, str, float]:
+    """Resolve (api_key, base_url, model_name, temperature) from a stored connection or env defaults.
 
     Mirrors the resolution logic in llm_service.get_client_and_model().
     """
@@ -40,12 +40,14 @@ async def resolve_connection_params(
         api_key = settings.api_key or ""
         base_url = str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = settings.model_name or "gpt-4o-mini"
+        temperature = 0.7
     else:
         api_key = conn_data.get("api_key") or settings.api_key or ""
         base_url = conn_data.get("api_base_url") or str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = conn_data.get("model_name") or settings.model_name or "gpt-4o-mini"
+        temperature = conn_data.get("temperature", 0.7)
 
-    return api_key, base_url, model_name
+    return api_key, base_url, model_name, float(temperature)
 
 
 def create_dynamic_model(
@@ -74,16 +76,22 @@ async def create_model_from_connection(
     connection_id: str | None = None,
     connection_type: str = "llm",
     streaming: bool = True,
-    temperature: float = 0.7,
+    temperature: float | None = None,
 ) -> ChatOpenAI:
     """Create a LangChain ChatOpenAI from a stored connection ID.
 
     Convenience helper that combines resolve_connection_params + create_dynamic_model.
     """
-    api_key, base_url, model_name = await resolve_connection_params(
+    api_key, base_url, model_name, resolved_temperature = await resolve_connection_params(
         connection_id, connection_type
     )
-    model = create_dynamic_model(api_key, base_url, model_name, streaming, temperature)
+    model = create_dynamic_model(
+        api_key,
+        base_url,
+        model_name,
+        streaming,
+        resolved_temperature if temperature is None else temperature,
+    )
     log.debug(
         "agent_model_created",
         model=model_name,

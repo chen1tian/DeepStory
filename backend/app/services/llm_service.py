@@ -13,7 +13,7 @@ log = structlog.get_logger()
 _clients: dict[str, AsyncOpenAI] = {}
 
 
-async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncOpenAI, str]:
+async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncOpenAI, str, float]:
     from app.storage.connection_storage import load_connection, list_connections
 
     conn_data = None
@@ -39,10 +39,12 @@ async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncO
         api_key = settings.api_key or ""
         base_url = str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = settings.model_name or "gpt-4o-mini"
+        temperature = 0.7
     else:
         api_key = conn_data.get("api_key") or settings.api_key or ""
         base_url = conn_data.get("api_base_url") or str(settings.api_base_url) if settings.api_base_url else "https://api.openai.com/v1"
         model_name = conn_data.get("model_name") or settings.model_name or "gpt-4o-mini"
+        temperature = conn_data.get("temperature", 0.7)
 
     cache_key = f"{base_url}:{api_key}"
     if cache_key not in _clients:
@@ -52,7 +54,7 @@ async def get_client_and_model(connection_id: str | None = None) -> tuple[AsyncO
             timeout=60.0,
         )
 
-    return _clients[cache_key], model_name
+    return _clients[cache_key], model_name, float(temperature)
 
 
 _RETRYABLE = (APITimeoutError, APIConnectionError)
@@ -60,7 +62,8 @@ _RETRYABLE = (APITimeoutError, APIConnectionError)
 
 async def chat_completion(messages: list[dict], connection_id: str | None = None, **kwargs) -> str:
     """Non-streaming chat completion with retry."""
-    client, model_name = await get_client_and_model(connection_id)
+    client, model_name, temperature = await get_client_and_model(connection_id)
+    kwargs.setdefault("temperature", temperature)
     last_err: Exception | None = None
     for attempt in range(3):
         try:
@@ -92,7 +95,8 @@ async def chat_completion_stream(messages: list[dict], connection_id: str | None
 
     Yields (kind, text) tuples where kind is "thinking" or "content".
     """
-    client, model_name = await get_client_and_model(connection_id)
+    client, model_name, temperature = await get_client_and_model(connection_id)
+    kwargs.setdefault("temperature", temperature)
     last_err: Exception | None = None
     for attempt in range(3):
         try:
