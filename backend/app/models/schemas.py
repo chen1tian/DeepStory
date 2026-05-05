@@ -184,6 +184,7 @@ class SceneObject(BaseModel):
     name: str
     interactable: bool = True
     description: str = ""
+    actions: list[str] = Field(default_factory=list)
 
 
 class SceneExit(BaseModel):

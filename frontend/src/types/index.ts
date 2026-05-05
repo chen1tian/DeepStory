@@ -188,6 +188,7 @@ export interface SceneObject {
   name: string;
   interactable: boolean;
   description: string;
+  actions: string[];
 }
 
 export interface SceneExit {

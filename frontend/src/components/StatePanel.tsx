@@ -405,6 +405,15 @@ export default function StatePanel() {
               {rpg.scene.objects.map((o, i) => (
                 <div className="bg-[var(--bg-surface)] rounded-lg px-3 py-2.5 mb-1.5 text-[13px]" key={i} style={{ fontSize: 13 }}>
                   {o.name} {o.description && <span style={{ color: "var(--text-secondary)", fontSize: 11 }}> - {o.description}</span>}
+                  {o.actions.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                      {o.actions.map((action, actionIndex) => (
+                        <span key={actionIndex} className="inline-block px-1.5 py-px rounded text-[11px] bg-amber-500/15 text-amber-300 m-0.5">
+                          {action}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
