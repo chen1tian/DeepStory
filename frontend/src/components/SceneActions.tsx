@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../stores/chatStore";
+import { useRoomStore } from "../stores/roomStore";
+import { useAuthStore } from "../stores/authStore";
 
 export default function SceneActions() {
   const stateData = useChatStore((s) => s.stateData);
   const sendMessage = useChatStore((s) => s.sendMessage);
+  const submitTurn = useChatStore((s) => s.submitTurn);
   const isStreaming = useChatStore((s) => s.isStreaming);
+  const roomState = useRoomStore((s) => s.roomState);
+  const isProcessing = useRoomStore((s) => s.isProcessing);
+  const setStagedContent = useRoomStore((s) => s.setStagedContent);
+  const user = useAuthStore((s) => s.user);
   const [activeObjectName, setActiveObjectName] = useState<string | null>(null);
   const [customObjectAction, setCustomObjectAction] = useState("");
   const [isObjectPanelCollapsed, setIsObjectPanelCollapsed] = useState(false);
@@ -14,6 +21,9 @@ export default function SceneActions() {
   const exits = (scene?.exits || []).filter((e) => e.accessible !== false);
   const npcs = (scene?.npcs || []);
   const activeObject = interactables.find((obj) => obj.name === activeObjectName) || null;
+  const myPlayer = roomState?.players.find((player) => player.user_id === user?.id);
+  const hasSubmitted = myPlayer?.has_submitted ?? false;
+  const actionsDisabled = isStreaming || isProcessing || hasSubmitted;
 
   useEffect(() => {
     setActiveObjectName(null);
@@ -31,9 +41,14 @@ export default function SceneActions() {
   if (!scene || (interactables.length === 0 && exits.length === 0 && npcs.length === 0)) return null;
 
   const handleAction = (text: string) => {
-    if (isStreaming) return;
+    if (actionsDisabled) return;
     setActiveObjectName(null);
     setCustomObjectAction("");
+    if (roomState) {
+      setStagedContent("");
+      submitTurn(text);
+      return;
+    }
     sendMessage(text);
   };
 
@@ -46,7 +61,7 @@ export default function SceneActions() {
 
   const submitCustomObjectAction = () => {
     const text = customObjectAction.trim();
-    if (!text || isStreaming) return;
+    if (!text || actionsDisabled) return;
     handleAction(text);
   };
 
@@ -62,7 +77,7 @@ export default function SceneActions() {
             <button
               className="px-2 py-1 text-[11px] rounded-md border border-amber-500/25 bg-amber-500/8 text-amber-300 hover:bg-amber-500/16 hover:border-amber-500/45 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               onClick={() => setIsObjectPanelCollapsed((current) => !current)}
-              disabled={isStreaming}
+              disabled={actionsDisabled}
               title={isObjectPanelCollapsed ? "展开物品栏" : "收起物品栏"}
             >
               {isObjectPanelCollapsed ? "展开" : "收起"}
@@ -80,7 +95,7 @@ export default function SceneActions() {
                         : "border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 hover:shadow-md hover:-translate-y-px"
                     }`}
                     onClick={() => setActiveObjectName((current) => current === obj.name ? null : obj.name)}
-                    disabled={isStreaming}
+                    disabled={actionsDisabled}
                     title={obj.description || obj.name}
                   >
                     {obj.name}
@@ -102,7 +117,7 @@ export default function SceneActions() {
                         key={action}
                         className="px-2.5 py-1 text-[12px] rounded-lg border border-amber-500/30 bg-[var(--bg-primary)] text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         onClick={() => handleAction(action)}
-                        disabled={isStreaming}
+                        disabled={actionsDisabled}
                         title={action}
                       >
                         {action}
@@ -121,12 +136,12 @@ export default function SceneActions() {
                         }
                       }}
                       placeholder={`自定义动作，例如：揭下${activeObject.name}`}
-                      disabled={isStreaming}
+                      disabled={actionsDisabled}
                     />
                     <button
                       className="px-2.5 py-1.5 text-[12px] rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                       onClick={submitCustomObjectAction}
-                      disabled={isStreaming || !customObjectAction.trim()}
+                      disabled={actionsDisabled || !customObjectAction.trim()}
                       title="发送自定义动作"
                     >
                       自定义动作
@@ -150,7 +165,7 @@ export default function SceneActions() {
                 : "border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 hover:shadow-md hover:-translate-y-px"
               }`}
               onClick={() => handleAction(`与${npc.name}交谈`)}
-              disabled={isStreaming}
+              disabled={actionsDisabled}
               title={`${npc.name}${npc.status ? ` - ${npc.status}` : ""}`}
             >
               {npc.name}
@@ -166,7 +181,7 @@ export default function SceneActions() {
                 key={exit.direction + exit.destination}
                 className="px-2.5 py-1 text-[13px] rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 flex items-center gap-1 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:shadow-md hover:-translate-y-px transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 onClick={() => handleAction(`前往${exit.destination}`)}
-                disabled={isStreaming}
+                disabled={actionsDisabled}
                 title={exit.note || `${exit.direction} → ${exit.destination}`}
               >
                 {exit.destination}
