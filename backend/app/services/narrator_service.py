@@ -116,6 +116,50 @@ def get_active_directives(arc: NarratorArc) -> list[NarrativeDirective]:
     ]
 
 
+def get_current_node(arc: NarratorArc) -> StoryNode | None:
+    """Return the node that should drive prompt injection for the current turn."""
+    active_nodes = sorted((n for n in arc.nodes if n.status == "active"), key=lambda n: n.order)
+    if active_nodes:
+        return active_nodes[0]
+
+    pending_nodes = sorted((n for n in arc.nodes if n.status == "pending"), key=lambda n: n.order)
+    if pending_nodes:
+        return pending_nodes[0]
+
+    return None
+
+
+def get_prompt_directives(arc: NarratorArc) -> list[NarrativeDirective]:
+    """Return directives to inject into the prompt, aligned to the current node."""
+    active = get_active_directives(arc)
+    current_node = get_current_node(arc)
+    if current_node is None:
+        return active
+
+    generic_directives = [d for d in active if not d.source_node_id]
+    node_directives = [d for d in active if d.source_node_id == current_node.id]
+    if node_directives:
+        return [*generic_directives, *node_directives]
+
+    templates = [tmpl.strip() for tmpl in current_node.directives_template if tmpl.strip()]
+    if not templates:
+        desc = (current_node.description or current_node.title).strip()
+        templates = [f"推进当前故事节点「{current_node.title}」：{desc}"]
+
+    fallback_directives = [
+        NarrativeDirective(
+            id=f"prompt-fallback-{current_node.id}-{index}",
+            type="advance_quest",
+            content=tmpl,
+            priority=7,
+            persistent=False,
+            source_node_id=current_node.id,
+        )
+        for index, tmpl in enumerate(templates[:2], start=1)
+    ]
+    return [*generic_directives, *fallback_directives]
+
+
 async def consume_directives(session_id: str) -> list[NarrativeDirective]:
     """
     Return active directives for prompt injection and consume one-shot / decrement limited ones.
@@ -134,7 +178,12 @@ async def consume_directives(session_id: str) -> list[NarrativeDirective]:
         log.debug("narrator_consume_empty", session_id=session_id)
         return []
 
+    prompt_directives = get_prompt_directives(arc)
+    current_node = get_current_node(arc)
+
     log.info("narrator_consume", session_id=session_id, directive_count=len(active),
+             prompt_directive_count=len(prompt_directives),
+             current_node_id=current_node.id if current_node else None,
              types=[d.type for d in active])
 
     # Process lifecycle
@@ -162,7 +211,7 @@ async def consume_directives(session_id: str) -> list[NarrativeDirective]:
     arc.updated_at = datetime.now().isoformat()
     await save_arc(arc)
 
-    return active
+    return prompt_directives
 
 
 async def evaluate_and_direct(

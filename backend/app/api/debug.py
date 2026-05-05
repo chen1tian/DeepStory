@@ -54,13 +54,13 @@ async def debug_prompt(session_id: str, req: DebugPromptRequest):
         user_protagonist = await load_user_protagonist(session.user_protagonist_id)
 
     # Read narrator directives WITHOUT consuming (read-only preview)
-    from app.services.narrator_service import get_active_directives, load_arc
+    from app.services.narrator_service import get_prompt_directives, load_arc
     narrator_directives = None
     arc = await load_arc(session_id)
     if arc and arc.enabled:
-        active = get_active_directives(arc)
-        if active:
-            narrator_directives = active
+        prompt_directives = get_prompt_directives(arc)
+        if prompt_directives:
+            narrator_directives = prompt_directives
 
     # Use the same build_prompt as the real chat flow (chat.py → tools.py)
     from app.agents.tools import build_prompt

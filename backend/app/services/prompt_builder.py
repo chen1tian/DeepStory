@@ -282,13 +282,13 @@ async def build_chat_messages(
             numbered = "\n".join(f"{i+1}. {line}" for i, line in enumerate(lines))
             narrator_text = (
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                "【导演指令 — 本次回复中必须执行】\n"
+                "【导演指令 — 请根据上下文判断是否执行】\n"
                 "在本次回复中呈现以下场景：\n\n"
                 f"{numbered}\n\n"
                 "执行要求：\n"
                 "- 自然地融入当前场景，与前文无缝衔接，不要生硬转折\n"
                 "- 通过环境描写、角色行为或对话自然引入，而非直接叙述\n"
-                "- 本指令优先级高于其他风格指引\n"
+                "- 优先参考与当前节点一致的内容，不要偏离当前剧情阶段\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             )
             narrator_tokens = count_tokens(narrator_text) + 4
