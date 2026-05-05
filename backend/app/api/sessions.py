@@ -18,6 +18,7 @@ from app.storage.protagonist_storage import load_protagonist
 from app.storage.user_protagonist_storage import load_user_protagonist, list_user_protagonists
 from app.storage.preset_storage import load_preset, list_presets
 from app.services.chat_manager import create_branch_from
+from app.services.text_macros import resolve_user_macro
 
 router = APIRouter(tags=["sessions"])
 
@@ -111,6 +112,12 @@ async def create_session(req: CreateSessionRequest):
                 user_protagonist_id = up["id"]
                 break
 
+    protagonist_name = "主角"
+    if user_protagonist_id:
+        current_user_protagonist = await load_user_protagonist(user_protagonist_id)
+        if current_user_protagonist:
+            protagonist_name = current_user_protagonist.get("name", "") or "主角"
+
     title = req.title
     if title == "新的对话" and story_title:
         title = story_title
@@ -155,7 +162,7 @@ async def create_session(req: CreateSessionRequest):
             id=generate_id(),
             parent_id=None,
             role="assistant",
-            content=opener_content,
+            content=resolve_user_macro(opener_content, protagonist_name),
             timestamp=now,
             token_count=0,
             branch_id="main",

@@ -7,6 +7,7 @@ import structlog
 
 from app.config import settings
 from app.models.schemas import Message, NarrativeDirective, SummaryData, StateData
+from app.services.text_macros import resolve_user_macro
 from app.services.token_counter import count_tokens, count_messages_tokens
 
 log = structlog.get_logger()
@@ -109,6 +110,11 @@ async def build_chat_messages(
             "不要解释原因，不要展开描述。\n\n"
         )
         system_prompt = safety_prefix + system_prompt
+
+    protagonist_name = None
+    if user_protagonist:
+        protagonist_name = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
+        system_prompt = resolve_user_macro(system_prompt, protagonist_name)
 
     # Append protagonist setting(s) to system prompt
     if room_players:
