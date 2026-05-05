@@ -360,8 +360,11 @@ async def build_chat_messages(
         pname = user_protagonist.get("name", "主角") if isinstance(user_protagonist, dict) else getattr(user_protagonist, "name", "主角")
         messages[-1] = {"role": "user", "content": f"[{pname}] {user_input}"}
 
+    prompt_tokens = count_messages_tokens(messages)
+
     budget_info = {
         "total": total_budget,
+        "prompt_tokens": prompt_tokens,
         "system_prompt": sys_tokens,
         "state": state_tokens,
         "narrator": narrator_tokens,

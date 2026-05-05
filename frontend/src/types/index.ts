@@ -273,6 +273,7 @@ export interface StateData {
 
 export interface TokenBudgetInfo {
   total: number;
+  prompt_tokens: number;
   system_prompt: number;
   state: number;
   summary: number;

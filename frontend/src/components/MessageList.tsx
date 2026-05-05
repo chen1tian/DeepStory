@@ -145,7 +145,7 @@ export default function MessageList({ onDelete, onResend }: Props) {
         {tokenBudget && tokenBudget.total > 0 && (
           <div className="flex w-full justify-center pb-1">
             <span className="text-[11px] text-[var(--text-secondary)]/50">
-              上下文 {tokenBudget.total.toLocaleString()} tokens · {messages.length} 条消息 · 已用 {(tokenBudget.total - tokenBudget.remaining).toLocaleString()}
+              发送 {tokenBudget.prompt_tokens.toLocaleString()} tokens · 上限 {tokenBudget.total.toLocaleString()} tokens · {messages.length} 条消息
             </span>
           </div>
         )}

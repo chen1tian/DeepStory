@@ -854,6 +854,7 @@ class JoinRoomResponse(BaseModel):
 
 class TokenBudgetInfo(BaseModel):
     total: int
+    prompt_tokens: int = 0
     system_prompt: int = 0
     state: int = 0
     summary: int = 0
