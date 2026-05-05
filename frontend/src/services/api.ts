@@ -96,12 +96,6 @@ export const getSession = (id: string) => request<Session>(`/sessions/${id}`);
 export const deleteSession = (id: string) =>
   request<{ status: string }>(`/sessions/${id}`, { method: "DELETE" });
 
-export const branchFromMessage = (sessionId: string, messageId: string) =>
-  request<{ active_branch: string[] }>(
-    `/sessions/${sessionId}/branch?message_id=${encodeURIComponent(messageId)}`,
-    { method: "POST" }
-  );
-
 // Chat messages
 export const getMessages = (sessionId: string) =>
   request<{ messages: Message[]; active_branch: string[] }>(

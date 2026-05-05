@@ -7,7 +7,6 @@ interface Props {
   isStreaming?: boolean;
   isPendingDelete?: boolean;
   isConfirming?: boolean;
-  onBranch?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onResend?: (messageId: string) => void;
   onConfirmStart?: () => void;
@@ -86,12 +85,14 @@ function parseThinking(content: string): { thinking: string; rest: string } {
 
 export default function MessageBubble({
   message, isStreaming, isPendingDelete, isConfirming,
-  onBranch, onDelete, onResend, onConfirmStart, onConfirmCancel,
+  onDelete, onResend, onConfirmStart, onConfirmCancel,
   sessionCharacters, protagonistAvatarUrl, protagonistAvatarEmoji,
 }: Props) {
   const isUser = message.role === "user";
+  const resendLabel = isUser ? "重发" : "重生成";
+  const resendTitle = isUser ? "重新发送此消息" : "重新生成这条回复";
 
-  const hasActions = (onBranch || onDelete || (onResend && isUser)) && !isStreaming;
+  const hasActions = (onDelete || onResend) && !isStreaming;
 
   // Multi-player aggregated message
   const multiTurns = isUser ? parseMultiplayerTurns(message.content) : null;
@@ -216,27 +217,15 @@ export default function MessageBubble({
             isUser ? "flex-row-reverse" : "flex-row"
           }`}
         >
-          {/* 分支按钮 */}
-          {onBranch && (
-            <button
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/5"
-              title="从此处分支出发"
-              onClick={() => onBranch(message.id)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12"/><path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M15 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M12 12c-2.76 0-5 2.24-5 5"/></svg>
-              分支
-            </button>
-          )}
-
-          {/* 重发按钮（仅用户消息） */}
-          {onResend && isUser && (
+          {/* 重发 / 重生成 */}
+          {onResend && (
             <button
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-emerald-400 hover:bg-emerald-500/10 transition-all border border-transparent hover:border-emerald-500/20"
-              title="重新发送此消息"
+              title={resendTitle}
               onClick={() => onResend(message.id)}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-              重发
+              {resendLabel}
             </button>
           )}
 

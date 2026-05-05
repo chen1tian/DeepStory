@@ -257,24 +257,41 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!ws) throw new Error("WebSocket 未连接");
     if (isStreaming) throw new Error("正在生成回复中，请等待完成后再重发");
 
-    // Delete this message and everything after from backend + local state
-    await apiDeleteMessagesFrom(sessionId, message.id);
-    const { messages } = get();
-    const idx = messages.findIndex((m) => m.id === message.id);
-    const trimmed = idx >= 0 ? messages.slice(0, idx) : messages;
+    const currentMessages = get().messages;
+    const messageIndex = currentMessages.findIndex((m) => m.id === message.id);
+    const targetUserMessage = message.role === "user"
+      ? message
+      : currentMessages.find((m) => m.id === message.parent_id && m.role === "user")
+        ?? (messageIndex > 0
+          ? [...currentMessages.slice(0, messageIndex)].reverse().find((m) => m.role === "user")
+          : undefined);
 
-    // Re-add the user message locally
+    if (!targetUserMessage) {
+      throw new Error("未找到可重新生成的用户消息");
+    }
+
+    const deleteFromMessageId = targetUserMessage.id;
+
+    // Delete the target user message and all following messages, then replay it.
+    await apiDeleteMessagesFrom(sessionId, deleteFromMessageId);
+    const idx = currentMessages.findIndex((m) => m.id === deleteFromMessageId);
+    const trimmed = idx >= 0 ? currentMessages.slice(0, idx) : currentMessages;
+
+    // Re-add the user message locally so the chat history stays continuous while streaming.
     const userMsg: Message = {
       id: randomId(),
       parent_id: trimmed.length > 0 ? trimmed[trimmed.length - 1].id : null,
       role: "user",
-      content: message.content,
+      content: targetUserMessage.content,
       timestamp: new Date().toISOString(),
       token_count: 0,
       branch_id: "main",
     };
     set({ messages: [...trimmed, userMsg], streamingContent: "", error: null });
-    ws.send({ type: "chat", content: message.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
+    import("./hookStore").then(({ useHookStore }) => {
+      useHookStore.getState().clearResults();
+    });
+    ws.send({ type: "chat", content: targetUserMessage.content, connection_id: localStorage.getItem("activeConnectionId"), state_connection_id: localStorage.getItem("stateConnectionId"), context_max_tokens: useUIStore.getState().contextLength });
   },
 
   submitTurn: (content: string) => {

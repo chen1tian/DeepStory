@@ -6,12 +6,11 @@ import { useUserProtagonistStore } from "../stores/userProtagonistStore";
 import { useUIStore } from "../stores/uiStore";
 
 interface Props {
-  onBranch: (messageId: string) => void;
   onDelete: (messageId: string) => void;
   onResend: (messageId: string) => void;
 }
 
-export default function MessageList({ onBranch, onDelete, onResend }: Props) {
+export default function MessageList({ onDelete, onResend }: Props) {
   const messages = useChatStore((s) => s.messages);
   const streamingContent = useChatStore((s) => s.streamingContent);
   const streamingThinking = useChatStore((s) => s.streamingThinking);
@@ -95,7 +94,6 @@ export default function MessageList({ onBranch, onDelete, onResend }: Props) {
           <MessageBubble
             key={msg.id}
             message={msg}
-            onBranch={onBranch}
             onDelete={onDelete}
             onResend={onResend}
             isPendingDelete={pendingDeleteDisplayIdx >= 0 && idx >= pendingDeleteDisplayIdx}

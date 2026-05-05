@@ -9,7 +9,6 @@ import TokenBudgetBar from "./TokenBudgetBar";
 import SceneActions from "./SceneActions";
 import HookResultPanel from "./HookResultPanel";
 import RoomPanel from "./RoomPanel";
-import { branchFromMessage } from "../services/api";
 
 const PLAYER_COLORS = [
   "border-indigo-500/40 bg-indigo-500/10 text-indigo-300",
@@ -71,27 +70,10 @@ function PendingTurnsDisplay() {
 
 export default function ChatView({ immersiveMode = false }: { immersiveMode?: boolean }) {
   const currentSessionId = useSessionStore((s) => s.currentSessionId);
-  const sendBranchMessage = useChatStore((s) => s.sendBranchMessage);
   const deleteMessagesFrom = useChatStore((s) => s.deleteMessagesFrom);
   const resendMessage = useChatStore((s) => s.resendMessage);
   const messages = useChatStore((s) => s.messages);
   const addToast = useUIStore((s) => s.addToast);
-
-  const handleBranch = useCallback(
-    async (messageId: string) => {
-      if (!currentSessionId) return;
-      try {
-        await branchFromMessage(currentSessionId, messageId);
-        const content = prompt("输入新分支的内容:");
-        if (content) {
-          sendBranchMessage(content, messageId);
-        }
-      } catch (err) {
-        addToast("创建分支失败", "error");
-      }
-    },
-    [currentSessionId, sendBranchMessage, addToast]
-  );
 
   const handleDelete = useCallback(
     async (messageId: string) => {
@@ -139,7 +121,7 @@ export default function ChatView({ immersiveMode = false }: { immersiveMode?: bo
   return (
     <div className="relative flex flex-col h-full bg-[var(--bg-primary)]">
       {!immersiveMode && <RoomPanel />}
-      <MessageList onBranch={handleBranch} onDelete={handleDelete} onResend={handleResend} />
+      <MessageList onDelete={handleDelete} onResend={handleResend} />
       {!immersiveMode && <PendingTurnsDisplay />}
       {!immersiveMode && <SceneActions />}
       {!immersiveMode && <HookResultPanel />}
